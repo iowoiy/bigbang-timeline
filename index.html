@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIGBANG 共筆年表</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0A0A;color:#F5F5F0;font-family:'Noto Sans TC',-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}
+button{font-family:inherit;cursor:pointer;transition:filter 0.15s,transform 0.15s}
+button:hover{filter:brightness(1.15)}
+button:active{transform:scale(0.97)}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0A0A0A}
+::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+a{color:inherit}
+
+/* Author Select */
+.author-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.author-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:32px}
+.author-btn{padding:16px 12px;background:#1A1A1A;border:2px solid transparent;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.author-btn:hover{transform:scale(1.04)}
+
+/* Header */
+.hero{text-align:center;padding:40px 20px 24px}
+.brand{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,10vw,5rem);letter-spacing:0.2em;color:#D4AF37;line-height:1}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#D4AF37}
+.stat-label{font-size:10px;color:#888;letter-spacing:0.15em}
+.identity-bar{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;background:#1A1A1A;border-radius:20px;border:1px solid rgba(255,255,255,0.08);margin-top:14px}
+
+/* Filters */
+.filters{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(212,175,55,0.12);padding:10px 16px;display:flex;justify-content:center;gap:5px;flex-wrap:wrap}
+.filter-btn{padding:4px 12px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#777;font-weight:400;font-size:11px;white-space:nowrap}
+.filter-btn.active{border-color:#D4AF37;background:#D4AF37;color:#0A0A0A;font-weight:600}
+
+/* Timeline */
+.timeline{max-width:860px;margin:0 auto;padding:30px 16px 80px}
+.year-header{position:sticky;top:48px;z-index:40;padding-bottom:8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.year-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.2rem,6vw,3.5rem);color:rgba(212,175,55,0.12);line-height:1}
+.fan-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;display:inline-flex;align-items:center;gap:3px}
+
+/* Event Card */
+.event-card{background:#1A1A1A;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;gap:12px;cursor:pointer;transition:all 0.15s}
+.event-card:hover{border-color:rgba(212,175,55,0.15);background:#1E1E1E}
+.month-col{flex-shrink:0;width:40px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.1rem}
+.cat-tag{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;padding:1px 6px;border-radius:3px;font-weight:500}
+.member-tag{font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid rgba(212,175,55,0.15);color:rgba(245,230,163,0.7)}
+.link-tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(42,157,143,0.12);color:#2A9D8F;text-decoration:none;border:1px solid rgba(42,157,143,0.2);display:inline-block}
+.link-tag:hover{background:rgba(42,157,143,0.25)}
+
+/* Author Badge */
+.abadge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500;white-space:nowrap;display:inline-flex;align-items:center;gap:2px}
+.abadge.sm{font-size:10px;padding:1px 6px}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#141414;border:1px solid rgba(212,175,55,0.2);border-radius:12px;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:24px}
+.form-label{display:block;font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;margin-top:10px}
+.form-input{width:100%;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#F5F5F0;font-size:13px;outline:none;margin-bottom:4px}
+.form-input:focus{border-color:rgba(212,175,55,0.4)}
+textarea.form-input{resize:vertical;line-height:1.6}
+.gold-btn{padding:8px 14px;background:#D4AF37;color:#0A0A0A;border:none;border-radius:6px;font-weight:700;font-size:13px;white-space:nowrap;flex-shrink:0}
+.del-btn{padding:6px 12px;background:transparent;border:1px solid rgba(230,57,70,0.3);color:#E63946;border-radius:6px;font-size:11px}
+.divider{height:1px;background:rgba(255,255,255,0.06);margin:16px 0}
+
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1A1A1A;border:1px solid rgba(212,175,55,0.3);color:#F5F5F0;padding:10px 24px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,0.5);transition:opacity 0.3s}
+
+/* Footer */
+.footer{text-align:center;padding:30px 20px 50px;border-top:1px solid rgba(255,255,255,0.05)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== TOAST ===== -->
+  <div v-if="toast" class="toast">{{ toast }}</div>
+
+  <!-- ===== AUTHOR SELECT ===== -->
+  <div v-if="!me" class="author-screen">
+    <div style="text-align:center;padding:40px;max-width:460px">
+      <div style="font-size:2.5rem;margin-bottom:8px">👑</div>
+      <h1 class="brand">BIGBANG</h1>
+      <p style="color:#888;font-size:14px;margin-top:8px;font-style:italic">共筆年表 — 請選擇你的身份</p>
+      <div class="author-grid">
+        <button v-for="a in AUTHORS" :key="a.id" class="author-btn"
+          :style="{borderColor: a.color+'33'}" @click="me=a.id">
+          <span style="font-size:1.8rem">{{ a.emoji }}</span>
+          <span :style="{fontSize:'15px',fontWeight:600,color:a.color}">{{ a.name }}</span>
+        </button>
+      </div>
+      <p style="color:#555;font-size:11px;margin-top:24px">選擇後即可開始編輯，你的操作都會記錄署名</p>
+    </div>
+  </div>
+
+  <!-- ===== LOADING ===== -->
+  <div v-else-if="loading" style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column">
+    <div class="brand" style="font-size:3rem;letter-spacing:0.3em">BIGBANG</div>
+    <div style="color:#888;margin-top:12px;font-size:14px">載入中...</div>
+  </div>
+
+  <!-- ===== MAIN APP ===== -->
+  <div v-else>
+    <!-- HEADER -->
+    <div class="hero">
+      <div style="font-size:2rem">👑</div>
+      <h1 class="brand">BIGBANG</h1>
+      <p style="color:#888;font-size:13px;margin-top:6px;font-style:italic">影視作品共筆年表</p>
+      <div class="identity-bar">
+        <span style="font-size:12px;color:#888">登入為</span>
+        <span class="abadge" :style="badgeStyle(me)">{{ authorEmoji(me) }} {{ authorName(me) }}</span>
+        <button @click="me=null" style="background:none;border:none;color:#555;font-size:11px;text-decoration:underline">切換</button>
+      </div>
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:20px;flex-wrap:wrap">
+        <div style="text-align:center"><div class="stat-num">{{ events.length }}</div><div class="stat-label">事件</div></div>
+        <div style="text-align:center"><div class="stat-num">{{ supplementedCount }}</div><div class="stat-label">已補充</div></div>
+        <div style="text-align:center"><div class="stat-num">{{ yearSpan }}</div><div class="stat-label">年</div></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+        <button @click="refresh" style="padding:6px 16px;background:transparent;border:1px solid rgba(212,175,55,0.3);color:#D4AF37;border-radius:20px;font-size:11px">🔄 同步</button>
+        <button @click="openNew" style="padding:6px 16px;background:#D4AF37;border:none;color:#0A0A0A;border-radius:20px;font-size:11px;font-weight:600">＋ 新增事件</button>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters">
+      <button v-for="f in filterOptions" :key="f.key" class="filter-btn" :class="{active:filter===f.key}" @click="filter=f.key">
+        {{ f.label }} <span style="opacity:0.6;font-size:10px">{{ f.key==='all'?events.length:events.filter(e=>e.cat===f.key).length }}</span>
+      </button>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline">
+      <div v-for="year in years" :key="year" style="margin-bottom:44px">
+        <div class="year-header">
+          <span class="year-num">{{ year }}</span>
+          <span style="font-size:10px;color:#555">{{ byYear[year].length }} 項</span>
+          <span v-for="aid in (FAN_SINCE[year]||[])" :key="aid" class="fan-badge"
+            :style="{background:authorColor(aid)+'18',color:authorColor(aid),border:'1px solid '+authorColor(aid)+'30'}">
+            {{ authorEmoji(aid) }} {{ authorName(aid) }} 入坑
+          </span>
+        </div>
+        <div v-for="ev in sortedEvents(byYear[year])" :key="ev.id" class="event-card"
+          :style="{borderLeft:'3px solid '+catColor(ev.cat)}" @click="openView(ev)">
+          <div class="month-col" :style="{color:catColor(ev.cat)}">{{ monthLabel(ev.month) }}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+              <span class="cat-tag" :style="{background:catBg(ev.cat),color:catColor(ev.cat)}">{{ catLabel(ev.cat) }}</span>
+              <span v-if="hasExtra(ev)" style="font-size:9px;color:#2A9D8F">📎 已補充</span>
+              <span v-if="lastEditor(ev)" style="font-size:9px;color:#555">·
+                <span class="abadge sm" :style="badgeStyle(lastEditor(ev))">{{ authorEmoji(lastEditor(ev)) }} {{ authorName(lastEditor(ev)) }}</span>
+              </span>
+            </div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:2px;line-height:1.4">{{ ev.title }}</div>
+            <div style="font-size:12px;color:#777;line-height:1.6">{{ ev.desc }}</div>
+            <div v-if="ev.links&&ev.links.length" style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">
+              <a v-for="(lk,i) in ev.links" :key="i" :href="lk.url" target="_blank" rel="noopener noreferrer"
+                class="link-tag" @click.stop>🔗 {{ lk.label }}</a>
+            </div>
+            <div v-if="ev.notes&&ev.notes.length" style="margin-top:5px;font-size:11px;color:#999;font-style:italic;border-left:2px solid rgba(212,175,55,0.2);padding-left:8px">
+              💬 {{ ev.notes[ev.notes.length-1].text }} —
+              <span class="abadge sm" :style="badgeStyle(ev.notes[ev.notes.length-1].author)">{{ authorEmoji(ev.notes[ev.notes.length-1].author) }} {{ authorName(ev.notes[ev.notes.length-1].author) }}</span>
+            </div>
+            <div v-if="ev.members&&ev.members.length" style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
+              <span v-for="m in ev.members" :key="m" class="member-tag">{{ m }}</span>
+            </div>
+          </div>
+          <div style="flex-shrink:0;align-self:center;font-size:12px;color:#444">✏️</div>
+        </div>
+      </div>
+      <div v-if="filtered.length===0" style="text-align:center;padding:60px;color:#555">此分類暫無資料</div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.3em;color:rgba(212,175,55,0.25)">BIGBANG · V.I.P</div>
+      <p style="font-size:10px;color:#444;margin-top:6px">共筆年表 · Since 2006</p>
+    </div>
+  </div>
+
+  <!-- ===== MODAL ===== -->
+  <div v-if="modal" class="overlay" @click.self="closeModal">
+    <div class="modal">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:700;color:#D4AF37">
+          {{ modal.mode==='new'?'＋ 新增事件':modal.mode==='edit'?'✏️ 編輯事件':'📋 事件詳情' }}
+        </div>
+        <button @click="closeModal" style="background:none;border:none;color:#666;font-size:20px;line-height:1">✕</button>
+      </div>
+
+      <!-- EDIT / NEW FORM -->
+      <div v-if="isEditing">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div>
+            <label class="form-label">年份</label>
+            <input type="number" v-model.number="form.year" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">月份</label>
+            <select v-model.number="form.month" class="form-input">
+              <option v-for="i in 12" :key="i" :value="i">{{ i }}月</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">分類</label>
+            <select v-model="form.cat" class="form-input">
+              <option v-for="(v,k) in CATS" :key="k" :value="k">{{ v.label }}</option>
+            </select>
+          </div>
+        </div>
+        <label class="form-label">標題</label>
+        <input v-model="form.title" placeholder="事件標題" class="form-input">
+        <label class="form-label">描述</label>
+        <textarea v-model="form.desc" placeholder="事件描述" rows="3" class="form-input"></textarea>
+        <label class="form-label">成員（逗號分隔）</label>
+        <input v-model="form.membersStr" placeholder="G-Dragon, T.O.P, 太陽, 大聲, 勝利" class="form-input">
+
+        <div class="divider"></div>
+
+        <!-- Links -->
+        <label class="form-label">🔗 相關連結</label>
+        <div v-for="(lk,i) in form.links" :key="i" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:4px">
+          <span style="flex:1;font-size:11px;color:#2A9D8F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 {{ lk.label }}</span>
+          <span v-if="lk.author" class="abadge sm" :style="badgeStyle(lk.author)">{{ authorEmoji(lk.author) }} {{ authorName(lk.author) }}</span>
+          <button @click="form.links.splice(i,1)" style="background:none;border:none;color:#E63946;font-size:12px">✕</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <input v-model="linkLabel" placeholder="名稱" class="form-input" style="flex:1 1 100px;margin-bottom:0">
+          <input v-model="linkUrl" placeholder="網址" @keydown.enter="addLink" class="form-input" style="flex:2 1 150px;margin-bottom:0">
+          <button @click="addLink" class="gold-btn">+</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Notes -->
+        <label class="form-label">💬 備註留言</label>
+        <div v-for="(n,i) in form.notes" :key="i" style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:4px">
+          <span style="flex:1;font-size:11px;color:#aaa">{{ n.text }}</span>
+          <span v-if="n.author" class="abadge sm" :style="badgeStyle(n.author)">{{ authorEmoji(n.author) }} {{ authorName(n.author) }}</span>
+          <button @click="form.notes.splice(i,1)" style="background:none;border:none;color:#E63946;font-size:12px">✕</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <input v-model="noteInput" placeholder="寫點什麼..." @keydown.enter="addNote" class="form-input" style="flex:1;margin-bottom:0">
+          <button @click="addNote" class="gold-btn">+</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
+          <div style="display:flex;gap:8px">
+            <button @click="saveEvent" :disabled="saving||!form.title?.trim()" class="gold-btn" style="padding:8px 24px">{{ saving?'儲存中...':'💾 儲存' }}</button>
+            <button @click="closeModal" style="padding:8px 16px;background:transparent;border:1px solid rgba(255,255,255,0.15);color:#888;border-radius:8px;font-size:12px">取消</button>
+          </div>
+          <template v-if="modal.mode==='edit'">
+            <div v-if="confirmDel" style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:#E63946">確定？</span>
+              <button @click="deleteEvent" style="padding:6px 12px;background:#E63946;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600">刪除</button>
+              <button @click="confirmDel=false" style="padding:6px 12px;background:transparent;border:1px solid #555;color:#888;border-radius:6px;font-size:11px">取消</button>
+            </div>
+            <button v-else @click="confirmDel=true" class="del-btn">🗑 刪除事件</button>
+          </template>
+        </div>
+      </div>
+
+      <!-- VIEW MODE -->
+      <div v-else-if="modal.mode==='view' && viewEvent">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <span class="cat-tag" :style="{background:catBg(viewEvent.cat),color:catColor(viewEvent.cat)}">{{ catLabel(viewEvent.cat) }}</span>
+          <span style="font-size:11px;color:#666">{{ viewEvent.year }} · {{ monthLabel(viewEvent.month) }}</span>
+        </div>
+        <h3 style="font-size:18px;font-weight:700;line-height:1.4;margin-bottom:6px">{{ viewEvent.title }}</h3>
+        <p style="font-size:13px;color:#999;line-height:1.7;margin-bottom:4px">{{ viewEvent.desc }}</p>
+        <div v-if="viewEvent.members?.length" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px">
+          <span v-for="m in viewEvent.members" :key="m" class="member-tag" style="font-size:10px;padding:2px 7px">{{ m }}</span>
+        </div>
+
+        <div class="divider" style="margin-top:0"></div>
+
+        <!-- Links in view -->
+        <h4 style="font-size:12px;font-weight:600;color:#D4AF37;margin-bottom:8px">🔗 相關連結</h4>
+        <template v-if="form.links?.length">
+          <div v-for="(lk,i) in form.links" :key="i" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:4px">
+            <a :href="lk.url" target="_blank" rel="noopener noreferrer" style="flex:1;font-size:12px;color:#2A9D8F;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 {{ lk.label }}</a>
+            <span v-if="lk.author" class="abadge sm" :style="badgeStyle(lk.author)">{{ authorEmoji(lk.author) }} {{ authorName(lk.author) }}</span>
+            <button @click="form.links.splice(i,1)" style="background:none;border:none;color:#E63946;font-size:12px">✕</button>
+          </div>
+        </template>
+        <p v-else style="font-size:11px;color:#555;margin-bottom:8px">尚無連結</p>
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+          <input v-model="linkLabel" placeholder="名稱" class="form-input" style="flex:1 1 80px;margin-bottom:0;font-size:12px">
+          <input v-model="linkUrl" placeholder="網址 https://..." @keydown.enter="addLinkAndSave" class="form-input" style="flex:2 1 140px;margin-bottom:0;font-size:12px">
+          <button @click="addLinkAndSave" class="gold-btn">+ 新增</button>
+        </div>
+
+        <!-- Notes in view -->
+        <h4 style="font-size:12px;font-weight:600;color:#D4AF37;margin-bottom:8px">💬 備註留言</h4>
+        <template v-if="form.notes?.length">
+          <div v-for="(n,i) in form.notes" :key="i" style="display:flex;align-items:flex-start;gap:6px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:4px">
+            <div style="flex:1">
+              <span style="font-size:12px;color:#bbb">{{ n.text }}</span>
+              <div style="font-size:10px;color:#555;margin-top:2px">
+                <span v-if="n.author" class="abadge sm" :style="badgeStyle(n.author)">{{ authorEmoji(n.author) }} {{ authorName(n.author) }}</span>
+                {{ formatTime(n.ts) }}
+              </div>
+            </div>
+            <button @click="form.notes.splice(i,1)" style="background:none;border:none;color:#E63946;font-size:12px">✕</button>
+          </div>
+        </template>
+        <p v-else style="font-size:11px;color:#555;margin-bottom:8px">尚無備註</p>
+        <div style="display:flex;gap:6px;margin-bottom:16px">
+          <input v-model="noteInput" placeholder="寫點什麼..." @keydown.enter="addNoteAndSave" class="form-input" style="flex:1;margin-bottom:0;font-size:12px">
+          <button @click="addNoteAndSave" class="gold-btn">+ 留言</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap">
+          <button @click="modal.mode='edit'" class="gold-btn" style="padding:8px 20px;font-size:12px">✏️ 編輯事件內容</button>
+          <button @click="showLog=!showLog" style="background:none;border:none;color:#555;font-size:11px;text-decoration:underline">{{ showLog?'收起':'📜 編輯紀錄' }}</button>
+        </div>
+
+        <div v-if="showLog" style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.02);border-radius:8px">
+          <div style="font-size:11px;color:#666;margin-bottom:6px">編輯紀錄（最新在前）</div>
+          <template v-if="viewEvent.editLog?.length">
+            <div v-for="(log,i) in [...viewEvent.editLog].reverse()" :key="i" style="font-size:11px;color:#777;padding:3px 0;display:flex;align-items:center;gap:6px">
+              <span class="abadge sm" :style="badgeStyle(log.author)">{{ authorEmoji(log.author) }} {{ authorName(log.author) }}</span>
+              <span>{{ log.action }}</span>
+              <span style="color:#444">{{ formatTime(log.ts) }}</span>
+            </div>
+          </template>
+          <div v-else style="font-size:11px;color:#444">尚無紀錄</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// 🔧 設定區 — 請填入你的 JSONBin 資訊
+// =====================================================
+const CONFIG = {
+  API_KEY:  "$2a$10$sJV8fUwDLp24EpMiIkLd5.o3WFNJgQoYFhljwxBis3k4d/nUps7Zy",   // ← 填入你的 X-Master-Key
+  BIN_ID:   "6981c248d0ea881f409d3788",                  // ← 填入你的 Bin ID
+};
+// =====================================================
+
+const AUTHORS = [
+  { id:"apollo",  name:"阿波", color:"#E63946", emoji:"🌙" },
+  { id:"martin",  name:"馬丁", color:"#457B9D", emoji:"👾" },
+  { id:"fancy",   name:"Fancy",color:"#D4AF37", emoji:"✨" },
+  { id:"cynical", name:"存疑", color:"#2A9D8F", emoji:"🤔" },
+  { id:"tooth",   name:"🦷寶",color:"#F4A261", emoji:"🦷" },
+  { id:"cedric",  name:"西追", color:"#7B2D8E", emoji:"🧙" },
+];
+
+const FAN_SINCE = { 2008:["apollo","martin"], 2009:["fancy"], 2011:["cynical"], 2012:["tooth"], 2014:["cedric"] };
+
+const CATS = {
+  milestone:{label:"里程碑",color:"#7B2D8E",bg:"rgba(123,45,142,0.15)"},
+  music:{label:"音樂",color:"#D4AF37",bg:"rgba(212,175,55,0.15)"},
+  tv:{label:"電視劇",color:"#E63946",bg:"rgba(230,57,70,0.15)"},
+  film:{label:"電影",color:"#457B9D",bg:"rgba(69,123,157,0.15)"},
+  variety:{label:"綜藝",color:"#2A9D8F",bg:"rgba(42,157,143,0.15)"},
+  concert:{label:"演唱會",color:"#F4A261",bg:"rgba(244,162,97,0.15)"},
+};
+
+const MONTHS = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+
+const DEFAULT_EVENTS = [
+  {id:"e01",year:2006,month:7,cat:"variety",title:"BIGBANG出道實錄",desc:"YG娛樂透過11集紀錄片記錄出道過程，於Mnet播出。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e02",year:2006,month:8,cat:"milestone",title:"🎉 BIGBANG 正式出道",desc:"在首爾奧林匹克競技場「YG Family 10周年演唱會」上以五人組合正式出道。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e03",year:2006,month:8,cat:"music",title:"首張單曲《Bigbang》發行",desc:"收錄〈We Belong Together〉（feat. 朴春）等曲目，銷量近4萬張。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e04",year:2006,month:12,cat:"concert",title:"首場演唱會《The Real》",desc:"於奧林匹克競技場舉辦，吸引12,000名粉絲。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e05",year:2006,month:12,cat:"music",title:"首張正規專輯《Since 2007》",desc:"首週空降第3名，累計銷量超過11萬張。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e06",year:2007,month:5,cat:"concert",title:"Want You Tour 巡迴",desc:"巡迴仁川、大邱、昌原、全州、釜山五城。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e07",year:2007,month:8,cat:"music",title:"迷你專輯《Always》—〈謊言〉",desc:"〈謊言〉連續6週韓國音源榜冠軍，G-Dragon開始主導團體音樂製作。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e08",year:2007,month:10,cat:"tv",title:"T.O.P 出演《I Am Sam》",desc:"T.O.P的影視出道作品，飾演高中生角色。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e09",year:2007,month:11,cat:"music",title:"迷你專輯《Hot Issue》",desc:"主打曲〈最後的問候〉在Melon連續八週冠軍。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e10",year:2007,month:11,cat:"milestone",title:"🏆 MKMF 年度歌曲 —〈謊言〉",desc:"獲Mnet KM Music Festival年度最佳歌曲、最佳男子組合獎。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e11",year:2008,month:3,cat:"music",title:"日本出道《For the World》",desc:"正式進軍日本音樂市場。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e12",year:2008,month:8,cat:"music",title:"迷你專輯《Stand Up》—〈一天一天〉",desc:"〈一天一天〉成為BIGBANG最具代表性的經典曲目之一。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e13",year:2008,month:11,cat:"music",title:"正規二輯《Remember》—〈紅霞〉",desc:"〈紅霞〉成為歷年最熱門歌曲之一。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e14",year:2008,month:11,cat:"milestone",title:"🏆 MKMF & 首爾歌謠大賞 年度藝人",desc:"同時獲得兩大頒獎典禮年度藝人大獎。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e15",year:2008,month:11,cat:"variety",title:"大聲加入《家族誕生》",desc:"成為SBS人氣綜藝固定班底，展現綜藝天份。",members:["大聲"],links:[],notes:[],editLog:[]},
+  {id:"e16",year:2009,month:3,cat:"music",title:"與2NE1合作〈Lollipop〉",desc:"為LG手機推出的合作曲，甫公開即登上多個榜單冠軍。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e17",year:2009,month:8,cat:"music",title:"日語正規專輯《BIGBANG》",desc:"〈My Heaven〉空降Oricon第3名。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e18",year:2009,month:10,cat:"tv",title:"T.O.P 出演《IRIS》",desc:"在KBS諜報動作劇中飾演殺手Vick，引起熱烈討論。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e19",year:2009,month:11,cat:"film",title:"T.O.P & 勝利《我的19歲》",desc:"兩人首部主演電影。",members:["T.O.P","勝利"],links:[],notes:[],editLog:[]},
+  {id:"e20",year:2010,month:6,cat:"film",title:"T.O.P《71：Into the Fire》",desc:"飾演學生兵，獲青龍獎、百想藝術大賞最佳新人獎。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e21",year:2010,month:12,cat:"music",title:"GD & TOP 子團專輯",desc:"〈High High〉、〈Knock Out〉大受歡迎。",members:["G-Dragon","T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e22",year:2011,month:2,cat:"music",title:"迷你專輯《Tonight》回歸",desc:"結束兩年韓國空窗期。首張進入美國iTunes前10的K-Pop專輯。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e23",year:2011,month:3,cat:"concert",title:"Big Show 2011 世界巡迴",desc:"為期10個月，橫跨四大洲。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e24",year:2011,month:11,cat:"milestone",title:"🏆 MTV EMA 最佳全球藝人獎",desc:"獲首屆MTV Europe Music Awards最佳全球藝人獎。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e25",year:2012,month:2,cat:"music",title:"《Alive》—〈Fantastic Baby〉",desc:"首張進入Billboard 200的韓語專輯。MV破億觀看。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e26",year:2012,month:3,cat:"variety",title:"出演《Running Man》Ep.84-85",desc:"全員出演，展現團體默契與搞笑魅力。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e27",year:2012,month:11,cat:"milestone",title:"🏆 MAMA 年度藝人（第二次）",desc:"再次獲得MAMA年度藝人大獎。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e28",year:2013,month:9,cat:"variety",title:"G-Dragon 出演《無限挑戰》",desc:"登上韓國國民綜藝，與劉在錫互動引發話題。",members:["G-Dragon"],links:[],notes:[],editLog:[]},
+  {id:"e29",year:2013,month:11,cat:"film",title:"T.O.P《同窗生》（Commitment）",desc:"飾演北韓間諜之子，獲釜山影展亞洲之星新人獎。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e30",year:2013,month:11,cat:"music",title:"T.O.P〈Doom Dada〉",desc:"個人數位單曲，Gaon第4名。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e31",year:2015,month:4,cat:"music",title:"MADE Series —〈LOSER〉〈BAE BAE〉",desc:"每月發行單曲回歸，雙曲同步登頂。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e32",year:2015,month:5,cat:"music",title:"〈BANG BANG BANG〉",desc:"BIGBANG最具爆發力的代表作之一。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e33",year:2015,month:4,cat:"concert",title:"MADE World Tour",desc:"巡迴15國，150萬人參加。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e34",year:2015,month:11,cat:"milestone",title:"🏆 MAMA 年度藝人（第三次）",desc:"第三次獲MAMA年度藝人，同時獲MMA年度藝人。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e35",year:2016,month:7,cat:"film",title:"紀錄片《BIGBANG MADE》上映",desc:"記錄MADE World Tour幕後故事。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e36",year:2016,month:8,cat:"concert",title:"出道十週年紀念演唱會",desc:"近三小時演出共19首作品。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e37",year:2016,month:12,cat:"music",title:"正規三輯《MADE》完整版",desc:"〈FXXK IT〉登上八大音源榜冠軍。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e38",year:2016,month:12,cat:"milestone",title:"首組進入 Forbes Celebrity 100",desc:"首位進入Forbes百大名人的韓國歌手。",members:["全員"],links:[],notes:[],editLog:[]},
+  {id:"e39",year:2017,month:2,cat:"milestone",title:"T.O.P 入伍",desc:"開始兵役。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e40",year:2017,month:6,cat:"music",title:"太陽《WHITE NIGHT》",desc:"個人第三張正規專輯。",members:["太陽"],links:[],notes:[],editLog:[]},
+  {id:"e41",year:2018,month:3,cat:"milestone",title:"成員陸續入伍",desc:"太陽、大聲、G-Dragon相繼入伍服役。",members:["太陽","大聲","G-Dragon"],links:[],notes:[],editLog:[]},
+  {id:"e42",year:2019,month:1,cat:"milestone",title:"Burning Sun 事件",desc:"勝利投資的夜店爆出醜聞，引發社會關注。",members:["勝利"],links:[],notes:[],editLog:[]},
+  {id:"e43",year:2019,month:3,cat:"milestone",title:"勝利宣布退出演藝圈",desc:"與YG解約，退出演藝圈。",members:["勝利"],links:[],notes:[],editLog:[]},
+  {id:"e44",year:2019,month:10,cat:"milestone",title:"成員陸續退伍",desc:"T.O.P、G-Dragon、太陽、大聲完成兵役。",members:["T.O.P","G-Dragon","太陽","大聲"],links:[],notes:[],editLog:[]},
+  {id:"e45",year:2022,month:4,cat:"music",title:"回歸單曲〈Still Life〉",desc:"四人體制回歸，進入Billboard Global 200前10。",members:["G-Dragon","T.O.P","太陽","大聲"],links:[],notes:[],editLog:[]},
+  {id:"e46",year:2022,month:12,cat:"milestone",title:"大聲與YG解約",desc:"結束合約關係。",members:["大聲"],links:[],notes:[],editLog:[]},
+  {id:"e47",year:2023,month:5,cat:"milestone",title:"T.O.P 宣布退出 BIGBANG",desc:"結束17年團體生涯。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e48",year:2024,month:10,cat:"music",title:"G-Dragon 回歸 —〈POWER〉",desc:"時隔七年個人回歸。",members:["G-Dragon"],links:[],notes:[],editLog:[]},
+  {id:"e49",year:2024,month:11,cat:"variety",title:"三人合體「D'splay」",desc:"G-Dragon、太陽、大聲於大聲YouTube頻道合體。",members:["G-Dragon","太陽","大聲"],links:[],notes:[],editLog:[]},
+  {id:"e50",year:2024,month:12,cat:"tv",title:"T.O.P《魷魚遊戲2》— Thanos",desc:"飾演玩家230號，國際評價正面。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+  {id:"e51",year:2025,month:1,cat:"music",title:"T.O.P 宣布新專輯 ANOTHER DIMENSION",desc:"暌違13年個人專輯。",members:["T.O.P"],links:[],notes:[],editLog:[]},
+];
+
+// JSONBin API helper
+const api = {
+  async load() {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.BIN_ID}/latest`, {
+      headers: { "X-Master-Key": CONFIG.API_KEY, "X-Bin-Meta": "false" }
+    });
+    if (!res.ok) throw new Error("Load failed: " + res.status);
+    return await res.json();
+  },
+  async save(data) {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.BIN_ID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Master-Key": CONFIG.API_KEY },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Save failed: " + res.status);
+  }
+};
+
+const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const me = ref(null);
+    const events = ref([]);
+    const filter = ref("all");
+    const modal = ref(null);
+    const form = reactive({ id:"",year:2025,month:1,cat:"music",title:"",desc:"",membersStr:"",links:[],notes:[],editLog:[] });
+    const linkUrl = ref("");
+    const linkLabel = ref("");
+    const noteInput = ref("");
+    const loading = ref(true);
+    const saving = ref(false);
+    const toast = ref(null);
+    const confirmDel = ref(false);
+    const showLog = ref(false);
+
+    let toastTimer = null;
+    function flash(msg) { toast.value = msg; clearTimeout(toastTimer); toastTimer = setTimeout(()=>toast.value=null, 2500); }
+
+    // Load
+    onMounted(async () => {
+      try {
+        const data = await api.load();
+        if (Array.isArray(data) && data.length) events.value = data;
+        else events.value = DEFAULT_EVENTS;
+      } catch {
+        events.value = DEFAULT_EVENTS;
+      }
+      loading.value = false;
+    });
+
+    async function persist(next) {
+      saving.value = true;
+      try {
+        await api.save(next);
+        events.value = next;
+        flash("✅ 已儲存（所有人可見）");
+      } catch { flash("❌ 儲存失敗，請稍後重試"); }
+      saving.value = false;
+    }
+
+    async function refresh() {
+      try {
+        const data = await api.load();
+        if (Array.isArray(data)) { events.value = data; flash("🔄 已同步最新"); }
+      } catch { flash("載入失敗"); }
+    }
+
+    // Author helpers
+    function findAuthor(id) { return AUTHORS.find(a=>a.id===id); }
+    function authorName(id) { return findAuthor(id)?.name || ""; }
+    function authorEmoji(id) { return findAuthor(id)?.emoji || ""; }
+    function authorColor(id) { return findAuthor(id)?.color || "#888"; }
+    function badgeStyle(id) {
+      const c = authorColor(id);
+      return { background: c+"22", color: c };
+    }
+
+    // Cat helpers
+    function catColor(cat) { return CATS[cat]?.color || "#888"; }
+    function catBg(cat) { return CATS[cat]?.bg || "rgba(136,136,136,0.15)"; }
+    function catLabel(cat) { return CATS[cat]?.label || cat; }
+    function monthLabel(m) { return MONTHS[m] || ""; }
+
+    // Event helpers
+    function hasExtra(ev) { return (ev.links?.length||0)+(ev.notes?.length||0)>0; }
+    function lastEditor(ev) { return ev.editLog?.length ? ev.editLog[ev.editLog.length-1].author : null; }
+
+    // Computed
+    const filtered = computed(() => filter.value==="all" ? events.value : events.value.filter(e=>e.cat===filter.value));
+    const byYear = computed(() => {
+      const m = {};
+      filtered.value.forEach(e => { (m[e.year] ??= []).push(e); });
+      return m;
+    });
+    const years = computed(() => Object.keys(byYear.value).sort((a,b)=>a-b));
+    const supplementedCount = computed(() => events.value.filter(e=>(e.links?.length||0)+(e.notes?.length||0)>0).length);
+    const yearSpan = computed(() => {
+      if(!events.value.length) return 0;
+      const yrs = events.value.map(e=>e.year);
+      return Math.max(...yrs) - Math.min(...yrs) + 1;
+    });
+    const viewEvent = computed(() => modal.value?.eventId ? events.value.find(e=>e.id===modal.value.eventId) : null);
+    const isEditing = computed(() => modal.value?.mode==="edit" || modal.value?.mode==="new");
+    const filterOptions = computed(() => [
+      {key:"all",label:"全部"},
+      ...Object.entries(CATS).map(([k,v])=>({key:k,label:v.label}))
+    ]);
+
+    function sortedEvents(arr) { return [...arr].sort((a,b)=>(a.month||0)-(b.month||0)); }
+
+    // Modal
+    function setForm(ev) {
+      form.id = ev.id;
+      form.year = ev.year;
+      form.month = ev.month;
+      form.cat = ev.cat;
+      form.title = ev.title;
+      form.desc = ev.desc;
+      form.membersStr = (ev.members||[]).join(", ");
+      form.links = JSON.parse(JSON.stringify(ev.links||[]));
+      form.notes = JSON.parse(JSON.stringify(ev.notes||[]));
+      form.editLog = JSON.parse(JSON.stringify(ev.editLog||[]));
+    }
+
+    function openView(ev) {
+      setForm(ev);
+      linkUrl.value = ""; linkLabel.value = ""; noteInput.value = "";
+      showLog.value = false; confirmDel.value = false;
+      modal.value = { mode:"view", eventId:ev.id };
+    }
+
+    function openNew() {
+      const newId = "e-" + Date.now();
+      form.id = newId; form.year = 2025; form.month = 1; form.cat = "music";
+      form.title = ""; form.desc = ""; form.membersStr = "全員";
+      form.links = []; form.notes = []; form.editLog = [];
+      linkUrl.value = ""; linkLabel.value = ""; noteInput.value = "";
+      modal.value = { mode:"new" };
+    }
+
+    function closeModal() { modal.value = null; confirmDel.value = false; showLog.value = false; }
+
+    // Save
+    function saveEvent() {
+      const parsed = {
+        id: form.id,
+        year: parseInt(form.year)||2025,
+        month: parseInt(form.month)||1,
+        cat: form.cat,
+        title: form.title,
+        desc: form.desc,
+        members: form.membersStr.split(",").map(s=>s.trim()).filter(Boolean),
+        links: form.links,
+        notes: form.notes,
+        editLog: [...form.editLog, { author:me.value, action:modal.value.mode==="new"?"新增":"編輯", ts:Date.now() }],
+      };
+      let next;
+      if (modal.value.mode==="new") next = [...events.value, parsed];
+      else next = events.value.map(e=>e.id===parsed.id ? parsed : e);
+      persist(next);
+      closeModal();
+    }
+
+    function deleteEvent() {
+      persist(events.value.filter(e=>e.id!==form.id));
+      closeModal();
+    }
+
+    // Links
+    function addLink() {
+      if (!linkUrl.value.trim()) return;
+      let u = linkUrl.value.trim();
+      if (!u.startsWith("http")) u = "https://" + u;
+      form.links.push({ url:u, label:linkLabel.value.trim()||u, author:me.value, ts:Date.now() });
+      linkUrl.value = ""; linkLabel.value = "";
+    }
+
+    function addLinkAndSave() {
+      addLink();
+      nextTick(() => saveSupplements());
+    }
+
+    // Notes
+    function addNote() {
+      if (!noteInput.value.trim()) return;
+      form.notes.push({ text:noteInput.value.trim(), author:me.value, ts:Date.now() });
+      noteInput.value = "";
+    }
+
+    function addNoteAndSave() {
+      addNote();
+      nextTick(() => saveSupplements());
+    }
+
+    function saveSupplements() {
+      const ev = events.value.find(e=>e.id===modal.value?.eventId);
+      if (!ev) return;
+      const updated = {
+        ...ev,
+        links: JSON.parse(JSON.stringify(form.links)),
+        notes: JSON.parse(JSON.stringify(form.notes)),
+        editLog: [...(ev.editLog||[]), { author:me.value, action:"補充", ts:Date.now() }],
+      };
+      persist(events.value.map(e=>e.id===updated.id ? updated : e));
+    }
+
+    function formatTime(ts) {
+      if (!ts) return "";
+      const d = new Date(ts);
+      return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    }
+
+    return {
+      AUTHORS, CATS, FAN_SINCE, me, events, filter, modal, form,
+      linkUrl, linkLabel, noteInput, loading, saving, toast,
+      confirmDel, showLog, filtered, byYear, years, viewEvent,
+      isEditing, supplementedCount, yearSpan, filterOptions,
+      authorName, authorEmoji, authorColor, badgeStyle,
+      catColor, catBg, catLabel, monthLabel,
+      hasExtra, lastEditor, sortedEvents, formatTime,
+      refresh, openView, openNew, closeModal, saveEvent, deleteEvent,
+      addLink, addLinkAndSave, addNote, addNoteAndSave, persist,
+    };
+  }
+}).mount("#app");
+</script>
+</body>
+</html>
