@@ -864,7 +864,7 @@ export default function App() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
                     multiple
                     onChange={handleFileUpload}
                     style={{ display: 'none' }}
