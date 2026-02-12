@@ -167,7 +167,7 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [me, setMe] = useState(null)
   const [filter, setFilter] = useState('all')
-  const [memberFilter, setMemberFilter] = useState('all') // 成員篩選
+  const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState(null)
 
@@ -178,6 +178,8 @@ export default function App() {
   })
   const [expandedId, setExpandedId] = useState(null) // 展開留言的卡片 ID
   const [showScrollTop, setShowScrollTop] = useState(false) // 回到頂部按鈕
+  const [yearNavOpen, setYearNavOpen] = useState(false) // 年份導航收合
+  const [memberNavOpen, setMemberNavOpen] = useState(false) // 成員篩選收合
   const [inlineNote, setInlineNote] = useState('') // 內嵌留言輸入
   const [linkUrl, setLinkUrl] = useState('')
   const [linkLabel, setLinkLabel] = useState('')
@@ -250,9 +252,9 @@ export default function App() {
       })
     }
 
-    // 成員篩選
-    if (memberFilter !== 'all') {
-      result = result.filter(e => e.members?.includes(memberFilter))
+    // 成員篩選（多選，符合任一即顯示）
+    if (memberFilter.length > 0) {
+      result = result.filter(e => memberFilter.some(m => e.members?.includes(m)))
     }
 
     return result
@@ -616,48 +618,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* 年份導航列 */}
-      <div className="year-nav">
-        {years.map(year => (
-          <button
-            key={year}
-            className="year-nav-btn"
-            onClick={() => {
-              const el = document.getElementById(`year-${year}`)
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
-          >
-            {year}
-          </button>
-        ))}
-      </div>
-
-      {/* 成員篩選 */}
-      <div className="member-filter">
-        <button
-          className={`member-filter-btn ${memberFilter === 'all' ? 'active' : ''}`}
-          onClick={() => setMemberFilter('all')}
-        >
-          全部
-        </button>
-        {MEMBERS.filter(m => m.name !== '全員').map(m => (
-          <button
-            key={m.name}
-            className={`member-filter-btn ${memberFilter === m.name ? 'active' : ''}`}
-            style={{
-              '--member-color': m.color,
-              borderColor: memberFilter === m.name ? m.color : undefined,
-              color: memberFilter === m.name ? m.color : undefined
-            }}
-            onClick={() => setMemberFilter(m.name)}
-          >
-            {m.name}
-          </button>
-        ))}
-      </div>
-
       {/* Filters */}
       <div className="filters">
+        {/* 分類篩選 */}
         <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
           全部 <span style={{ opacity: 0.6, fontSize: 10 }}>{events.length}</span>
         </button>
@@ -670,6 +633,74 @@ export default function App() {
             {cat.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{events.filter(e => (e.cats && e.cats.includes(key)) || e.cat === key).length}</span>
           </button>
         ))}
+
+        <span className="filter-divider">|</span>
+
+        {/* 年份篩選 */}
+        <div className="filter-dropdown">
+          <button
+            className="filter-btn dropdown-toggle"
+            onClick={() => { setYearNavOpen(!yearNavOpen); setMemberNavOpen(false) }}
+          >
+            年份 {yearNavOpen ? '▲' : '▼'}
+          </button>
+          {yearNavOpen && (
+            <div className="filter-dropdown-list">
+              {years.map(year => (
+                <button
+                  key={year}
+                  className="filter-dropdown-item"
+                  onClick={() => {
+                    const el = document.getElementById(`year-${year}`)
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    setYearNavOpen(false)
+                  }}
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 成員篩選（多選） */}
+        <div className="filter-dropdown">
+          <button
+            className={`filter-btn dropdown-toggle ${memberFilter.length > 0 ? 'active' : ''}`}
+            onClick={() => { setMemberNavOpen(!memberNavOpen); setYearNavOpen(false) }}
+          >
+            {memberFilter.length === 0 ? '成員' : memberFilter.length === 1 ? memberFilter[0] : `${memberFilter.length}位成員`} {memberNavOpen ? '▲' : '▼'}
+          </button>
+          {memberNavOpen && (
+            <div className="filter-dropdown-list">
+              <button
+                className={`filter-dropdown-item ${memberFilter.length === 0 ? 'active' : ''}`}
+                onClick={() => setMemberFilter([])}
+              >
+                全部
+              </button>
+              {MEMBERS.filter(m => m.name !== '全員').map(m => (
+                <button
+                  key={m.name}
+                  className={`filter-dropdown-item ${memberFilter.includes(m.name) ? 'active' : ''}`}
+                  style={{
+                    color: memberFilter.includes(m.name) ? m.color : undefined,
+                    borderColor: memberFilter.includes(m.name) ? m.color : undefined
+                  }}
+                  onClick={() => {
+                    if (memberFilter.includes(m.name)) {
+                      setMemberFilter(memberFilter.filter(x => x !== m.name))
+                    } else {
+                      setMemberFilter([...memberFilter, m.name])
+                    }
+                  }}
+                >
+                  {memberFilter.includes(m.name) ? '✓ ' : ''}{m.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Timeline */}

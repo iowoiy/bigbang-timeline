@@ -162,66 +162,65 @@ a {
   margin-top: 14px;
 }
 
-/* ========== 年份導航列 ========== */
-.year-nav {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 16px;
-  background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(20px);
-  flex-wrap: wrap;
+/* ========== 篩選下拉選單 ========== */
+.filter-divider {
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 12px;
+  margin: 0 4px;
+  align-self: center;
 }
 
-.year-nav-btn {
-  padding: 4px 10px;
-  border-radius: 12px;
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-btn.dropdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  background: rgba(26, 26, 26, 0.98);
   border: 1px solid rgba(212, 175, 55, 0.2);
-  background: transparent;
-  color: #D4AF37;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.year-nav-btn:hover {
-  background: rgba(212, 175, 55, 0.15);
-}
-
-.year-nav-btn:active {
-  transform: scale(0.95);
-}
-
-/* ========== 成員篩選 ========== */
-.member-filter {
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 100px;
+  z-index: 150;
+  animation: fadeIn 0.15s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   display: flex;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(20px);
   flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  max-width: 280px;
 }
 
-.member-filter-btn {
-  padding: 4px 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+.filter-dropdown-item {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: none;
   background: transparent;
-  color: #777;
-  font-size: 11px;
+  color: #999;
+  font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.member-filter-btn:hover {
-  border-color: var(--member-color, #D4AF37);
-  color: var(--member-color, #D4AF37);
+.filter-dropdown-item:hover {
+  background: rgba(212, 175, 55, 0.15);
+  color: #D4AF37;
 }
 
-.member-filter-btn.active {
-  background: rgba(255, 255, 255, 0.05);
+.filter-dropdown-item.active {
+  background: rgba(212, 175, 55, 0.2);
+  color: #D4AF37;
   font-weight: 600;
 }
 
