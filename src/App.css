@@ -347,8 +347,10 @@ a {
   white-space: nowrap;
 }
 
-.filter-dropdown-item:hover {
-  color: #D4AF37;
+@media (hover: hover) {
+  .filter-dropdown-item:hover {
+    color: #D4AF37;
+  }
 }
 
 .filter-dropdown-item.active {
