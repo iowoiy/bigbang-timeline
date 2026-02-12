@@ -838,18 +838,18 @@ export default function App() {
 
                 {/* Media */}
                 <label className="form-label">🖼️ 圖片 / 影片</label>
-                {form.media.map((m, i) => (
-                  <div key={i} style={{ marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
-                      <span style={{ flex: 1, fontSize: 11, color: '#D4AF37', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {isImageUrl(m.url) ? '🖼️' : '🎬'} {m.url.slice(0, 40)}...
-                      </span>
-                      {m.author && <span className="abadge sm" style={badgeStyle(m.author)}>{authorEmoji(m.author)}</span>}
-                      <button onClick={() => removeMedia(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
+                <div className="media-grid">
+                  {form.media.map((m, i) => (
+                    <div key={i} className="media-grid-item">
+                      {isImageUrl(m.url) ? (
+                        <img src={m.url} alt="" />
+                      ) : (
+                        <div className="media-grid-video">🎬</div>
+                      )}
+                      <button onClick={() => removeMedia(i)} className="media-grid-delete">✕</button>
                     </div>
-                    <MediaPreview url={m.url} />
-                  </div>
-                ))}
+                  ))}
+                </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   <input
                     value={mediaUrl}
