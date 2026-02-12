@@ -311,6 +311,13 @@ export default function App() {
     setModal({ mode: 'new' })
   }
 
+  const openEdit = (ev) => {
+    setFormFromEvent(ev)
+    setLinkUrl(''); setLinkLabel(''); setNoteInput(''); setMediaUrl('')
+    setShowLog(false); setConfirmDel(false)
+    setModal({ mode: 'edit', eventId: ev.id })
+  }
+
   const closeModal = () => {
     setModal(null)
     setConfirmDel(false)
@@ -636,7 +643,7 @@ export default function App() {
                       )}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.4 }}>{ev.title}</div>
-                    <div style={{ fontSize: 12, color: '#777', lineHeight: 1.6 }}>{ev.desc}</div>
+                    <div className="event-desc">{ev.desc}</div>
 
                     {/* 媒體預覽（卡片中只顯示第一張圖） */}
                     {ev.media?.length > 0 && isImageUrl(ev.media[0].url) && (
@@ -682,7 +689,7 @@ export default function App() {
                     */}
                     <button
                       className="card-icon-btn"
-                      onClick={(e) => { e.stopPropagation(); openView(ev) }}
+                      onClick={(e) => { e.stopPropagation(); openEdit(ev) }}
                       title="編輯"
                     >
                       ✏️
@@ -897,7 +904,7 @@ export default function App() {
               </div>
             )}
 
-            {/* View Mode */}
+            {/* View Mode - 只顯示詳情 */}
             {modal.mode === 'view' && viewEvent && (
               <div>
                 {/* 事件基本資訊 */}
@@ -916,11 +923,11 @@ export default function App() {
                 )}
 
                 {/* Media in view */}
-                {form.media?.length > 0 && (
+                {viewEvent.media?.length > 0 && (
                   <>
                     <div className="divider" style={{ marginTop: 0 }} />
                     <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🖼️ 圖片 / 影片</h4>
-                    {form.media.map((m, i) => (
+                    {viewEvent.media.map((m, i) => (
                       <div key={i} style={{ marginBottom: 12 }}>
                         <MediaPreview url={m.url} />
                         <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
@@ -932,81 +939,43 @@ export default function App() {
                   </>
                 )}
 
-                <div className="divider" style={{ marginTop: 0 }} />
-
-                {/* Add media in view */}
-                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>➕ 新增圖片 / 影片</h4>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <input
-                    value={mediaUrl}
-                    onChange={e => setMediaUrl(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addMediaAndSave()}
-                    placeholder="貼上圖片或影片連結"
-                    className="form-input"
-                    style={{ flex: '1 1 180px', marginBottom: 0, fontSize: 12 }}
-                  />
-                  <button onClick={addMediaAndSave} className="gold-btn">+ 新增</button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      if (file.size > 32 * 1024 * 1024) {
-                        flash('❌ 檔案太大，最大 32MB')
-                        return
-                      }
-                      setUploading(true)
-                      try {
-                        const url = await uploadToImgBB(file)
-                        const newMedia = [...form.media, { url, author: me, ts: Date.now() }]
-                        saveSupplements({ media: newMedia })
-                        flash('✅ 圖片上傳成功')
-                      } catch {
-                        flash('❌ 上傳失敗，請重試')
-                      }
-                      setUploading(false)
-                      if (fileInputRef.current) fileInputRef.current.value = ''
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="upload-btn"
-                  >
-                    {uploading ? '上傳中...' : '🖼️ 上傳'}
-                  </button>
-                </div>
-
                 {/* Links in view */}
-                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🔗 相關連結</h4>
-                {form.links?.length > 0 ? (
-                  form.links.map((lk, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
-                      <a href={lk.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, fontSize: 12, color: '#2A9D8F', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🔗 {lk.label}</a>
-                      {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)} {authorName(lk.author)}</span>}
-                      <button onClick={() => removeLink(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
-                    </div>
-                  ))
-                ) : (
-                  <p style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>尚無連結</p>
+                {viewEvent.links?.length > 0 && (
+                  <>
+                    <div className="divider" style={{ marginTop: 0 }} />
+                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🔗 相關連結</h4>
+                    {viewEvent.links.map((lk, i) => (
+                      <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4, textDecoration: 'none' }}>
+                        <span style={{ flex: 1, fontSize: 12, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🔗 {lk.label}</span>
+                        {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)}</span>}
+                      </a>
+                    ))}
+                  </>
                 )}
-                <div className="link-input-group">
-                  <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱（可選）" className="form-input" />
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLinkAndSave()} placeholder="貼上網址" className="form-input" style={{ flex: 1, marginBottom: 0 }} />
-                    <button onClick={addLinkAndSave} className="gold-btn">+ 新增</button>
-                  </div>
-                </div>
+
+                {/* Notes in view */}
+                {viewEvent.notes?.length > 0 && (
+                  <>
+                    <div className="divider" style={{ marginTop: 0 }} />
+                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>💬 留言</h4>
+                    {viewEvent.notes.map((n, i) => (
+                      <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ fontSize: 12, color: '#aaa', marginBottom: 2 }}>{n.text}</div>
+                        <div style={{ fontSize: 10, color: '#555' }}>
+                          <span className="abadge sm" style={badgeStyle(n.author)}>{authorEmoji(n.author)} {authorName(n.author)}</span>
+                          {' '}{formatTime(n.ts)}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
 
                 <div className="divider" />
 
                 {/* 底部操作區 */}
                 <div className="form-actions">
                   <button onClick={() => setShowLog(!showLog)} className="cancel-btn">{showLog ? '收起紀錄' : '📜 編輯紀錄'}</button>
-                  <button onClick={() => setModal(m => ({ ...m, mode: 'edit' }))} className="gold-btn save-btn">✏️ 編輯</button>
+                  <button onClick={() => openEdit(viewEvent)} className="gold-btn save-btn">✏️ 編輯</button>
                 </div>
 
                 {showLog && (
