@@ -465,7 +465,7 @@ a {
 .member-tag {
   font-size: 9px;
   padding: 1px 6px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid rgba(212, 175, 55, 0.15);
   color: rgba(245, 230, 163, 0.7);
 }
@@ -534,7 +534,7 @@ a {
 }
 
 .modal {
-  background: #141414;
+  background: #1a1a1a;
   border: 1px solid rgba(212, 175, 55, 0.2);
   border-radius: 12px;
   width: 100%;

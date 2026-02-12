@@ -215,6 +215,18 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Modal 打開時鎖定背景滾動
+  useEffect(() => {
+    if (modal) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [modal])
+
   // 儲存資料
   const persist = async (newEvents) => {
     setSaving(true)
