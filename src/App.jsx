@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle } from 'lucide-react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
@@ -79,6 +79,19 @@ function isImageUrl(url) {
   return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) ||
          url.includes('i.ibb.co') ||
          url.includes('imgur.com')
+}
+
+// 取得影片縮圖
+function getVideoThumbnail(url) {
+  const video = parseVideoUrl(url)
+  if (!video) return null
+
+  if (video.type === 'youtube') {
+    return `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`
+  }
+
+  // IG 和 Twitter 無法直接取得縮圖
+  return null
 }
 
 // ========== API 函式 ==========
@@ -1004,16 +1017,28 @@ export default function App() {
                 {/* Media */}
                 <label className="form-label"><Image size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />圖片 / 影片</label>
                 <div className="media-grid">
-                  {form.media.map((m, i) => (
-                    <div key={i} className="media-grid-item">
-                      {isImageUrl(m.url) ? (
-                        <img src={m.url} alt="" />
-                      ) : (
-                        <div className="media-grid-video">🎬</div>
-                      )}
-                      <button onClick={() => removeMedia(i)} className="media-grid-delete"><X size={12} /></button>
-                    </div>
-                  ))}
+                  {form.media.map((m, i) => {
+                    const thumbnail = getVideoThumbnail(m.url)
+                    const video = parseVideoUrl(m.url)
+                    return (
+                      <div key={i} className="media-grid-item">
+                        {isImageUrl(m.url) ? (
+                          <img src={m.url} alt="" />
+                        ) : thumbnail ? (
+                          <div className="media-grid-video-thumb">
+                            <img src={thumbnail} alt="" />
+                            <div className="media-grid-play"><Play size={20} /></div>
+                          </div>
+                        ) : (
+                          <div className="media-grid-video">
+                            <Film size={24} />
+                            <span>{video?.type === 'instagram' ? 'IG' : video?.type === 'twitter' ? 'X' : '影片'}</span>
+                          </div>
+                        )}
+                        <button onClick={() => removeMedia(i)} className="media-grid-delete"><X size={12} /></button>
+                      </div>
+                    )
+                  })}
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   <input
