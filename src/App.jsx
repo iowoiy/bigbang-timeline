@@ -1093,7 +1093,7 @@ export default function App() {
                   <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year}/{viewEvent.month}{viewEvent.day ? `/${viewEvent.day}` : ''}</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{viewEvent.title}</h3>
-                <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 4 }}>{viewEvent.desc}</p>
+                <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 4, whiteSpace: 'pre-line' }}>{viewEvent.desc}</p>
                 {viewEvent.members?.length > 0 && (
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
                     {viewEvent.members.map(m => <span key={m} className="member-tag" style={{ fontSize: 10, padding: '2px 7px', borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
