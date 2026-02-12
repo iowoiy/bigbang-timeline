@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film } from 'lucide-react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
@@ -209,6 +209,7 @@ export default function App() {
   const [uploading, setUploading] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [showLog, setShowLog] = useState(false)
+  const [imageSlider, setImageSlider] = useState({ open: false, images: [], index: 0 }) // 圖片輪播
 
   const fileInputRef = useRef(null)
 
@@ -1130,22 +1131,53 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Media in view */}
-                {viewEvent.media?.length > 0 && (
-                  <>
-                    <div className="divider" style={{ marginTop: 0 }} />
-                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Image size={12} />圖片 / 影片</h4>
-                    {viewEvent.media.map((m, i) => (
-                      <div key={i} style={{ marginBottom: 12 }}>
-                        <MediaPreview url={m.url} />
-                        <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
-                          {m.author && <span className="abadge sm" style={badgeStyle(m.author)}>{authorEmoji(m.author)} {authorName(m.author)}</span>}
-                          {' '}{formatTime(m.ts)}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
+                {/* Media in view - 分開顯示影片和圖片 */}
+                {viewEvent.media?.length > 0 && (() => {
+                  const videos = viewEvent.media.filter(m => parseVideoUrl(m.url))
+                  const images = viewEvent.media.filter(m => isImageUrl(m.url))
+                  return (
+                    <>
+                      {/* 影片優先顯示 */}
+                      {videos.length > 0 && (
+                        <>
+                          <div className="divider" style={{ marginTop: 0 }} />
+                          <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Film size={12} />影片</h4>
+                          {videos.map((m, i) => (
+                            <div key={i} style={{ marginBottom: 12 }}>
+                              <MediaPreview url={m.url} />
+                              <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
+                                {m.author && <span className="abadge sm" style={badgeStyle(m.author)}>{authorEmoji(m.author)} {authorName(m.author)}</span>}
+                                {' '}{formatTime(m.ts)}
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+
+                      {/* 圖片列表，點擊開啟輪播 */}
+                      {images.length > 0 && (
+                        <>
+                          <div className="divider" style={{ marginTop: 0 }} />
+                          <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Image size={12} />圖片 ({images.length})</h4>
+                          <div className="image-list">
+                            {images.map((m, i) => (
+                              <div
+                                key={i}
+                                className="image-list-item"
+                                onClick={() => setImageSlider({ open: true, images, index: i })}
+                              >
+                                <img src={m.url} alt="" />
+                                <div className="image-list-overlay">
+                                  <span>{i + 1}/{images.length}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )
+                })()}
 
                 {/* Links in view */}
                 {viewEvent.links?.length > 0 && (
@@ -1234,6 +1266,54 @@ export default function App() {
         >
           <ChevronUp size={20} />
         </button>
+      )}
+
+      {/* 圖片輪播 Modal */}
+      {imageSlider.open && (
+        <div className="image-slider-overlay" onClick={() => setImageSlider({ open: false, images: [], index: 0 })}>
+          <button className="image-slider-close"><X size={24} /></button>
+          <div className="image-slider-container" onClick={e => e.stopPropagation()}>
+            <button
+              className="image-slider-nav prev"
+              onClick={() => setImageSlider(s => ({ ...s, index: (s.index - 1 + s.images.length) % s.images.length }))}
+              disabled={imageSlider.images.length <= 1}
+            >
+              <ChevronLeft size={28} />
+            </button>
+            <div className="image-slider-main">
+              <img src={imageSlider.images[imageSlider.index]?.url} alt="" />
+              <div className="image-slider-info">
+                <span>{imageSlider.index + 1} / {imageSlider.images.length}</span>
+                {imageSlider.images[imageSlider.index]?.author && (
+                  <span className="abadge sm" style={badgeStyle(imageSlider.images[imageSlider.index].author)}>
+                    {authorEmoji(imageSlider.images[imageSlider.index].author)} {authorName(imageSlider.images[imageSlider.index].author)}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              className="image-slider-nav next"
+              onClick={() => setImageSlider(s => ({ ...s, index: (s.index + 1) % s.images.length }))}
+              disabled={imageSlider.images.length <= 1}
+            >
+              <ChevronRight size={28} />
+            </button>
+          </div>
+          {/* 縮圖列表 */}
+          {imageSlider.images.length > 1 && (
+            <div className="image-slider-thumbs">
+              {imageSlider.images.map((img, i) => (
+                <div
+                  key={i}
+                  className={`image-slider-thumb ${i === imageSlider.index ? 'active' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); setImageSlider(s => ({ ...s, index: i })) }}
+                >
+                  <img src={img.url} alt="" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
