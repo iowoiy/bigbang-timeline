@@ -855,6 +855,10 @@ export default function App() {
             {/* Edit / New Form */}
             {isEditing && (
               <div>
+                <label className="form-label">標題</label>
+                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="事件標題" className="form-input" />
+                <label className="form-label">描述</label>
+                <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="事件描述" rows={3} className="form-input" />
                 <div style={{ marginBottom: 12 }}>
                   <label className="form-label">日期</label>
                   <input
@@ -896,10 +900,6 @@ export default function App() {
                       })}
                     </div>
                 </div>
-                <label className="form-label">標題</label>
-                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="事件標題" className="form-input" />
-                <label className="form-label">描述</label>
-                <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="事件描述" rows={3} className="form-input" />
                 <label className="form-label">成員</label>
                 <div className="member-select">
                   {MEMBERS.map(member => {
