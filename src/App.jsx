@@ -59,7 +59,7 @@ function parseVideoUrl(url) {
   }
 
   // Instagram Reels / Post
-  const igMatch = url.match(/instagram\.com\/(?:reel|p)\/([a-zA-Z0-9_-]+)/)
+  const igMatch = url.match(/instagram\.com\/(?:reel|reels|p)\/([a-zA-Z0-9_-]+)/)
   if (igMatch) {
     return { type: 'instagram', id: igMatch[1], url }
   }
@@ -140,14 +140,19 @@ function MediaPreview({ url }) {
     )
   }
 
-  // Instagram 連結（無法直接嵌入，顯示預覽卡片）
+  // Instagram 嵌入
   if (video?.type === 'instagram') {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="media-link-card">
-        <span className="media-icon"><Camera size={16} /></span>
-        <span>Instagram 貼文</span>
-        <span className="media-arrow">→</span>
-      </a>
+      <div className="media-embed media-embed-ig">
+        <iframe
+          src={`https://www.instagram.com/p/${video.id}/embed/captioned`}
+          frameBorder="0"
+          scrolling="no"
+          allowTransparency="true"
+          allowFullScreen
+          title="Instagram post"
+        />
+      </div>
     )
   }
 
@@ -1030,8 +1035,8 @@ export default function App() {
                             <div className="media-grid-play"><Play size={20} /></div>
                           </div>
                         ) : (
-                          <div className="media-grid-video">
-                            <Film size={24} />
+                          <div className={`media-grid-video ${video?.type === 'instagram' ? 'ig-video' : ''}`}>
+                            {video?.type === 'instagram' ? <Camera size={24} /> : <Film size={24} />}
                             <span>{video?.type === 'instagram' ? 'IG' : video?.type === 'twitter' ? 'X' : '影片'}</span>
                           </div>
                         )}

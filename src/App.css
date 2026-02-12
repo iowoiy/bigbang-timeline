@@ -1006,6 +1006,13 @@ textarea.form-input {
   border: none;
 }
 
+/* Instagram 嵌入需要更高的比例 */
+.media-embed-ig {
+  padding-bottom: 120%; /* IG 貼文比較高 */
+  min-height: 450px;
+  max-height: 600px;
+}
+
 .media-image {
   margin: 8px 0;
   border-radius: 8px;
@@ -1107,6 +1114,16 @@ textarea.form-input {
 .media-grid-video span {
   font-size: 10px;
   font-weight: 600;
+}
+
+/* Instagram 特殊背景 */
+.media-grid-video.ig-video {
+  background: linear-gradient(135deg, #833AB4 0%, #FD1D1D 50%, #FCB045 100%);
+  color: #fff;
+}
+
+.media-grid-video.ig-video span {
+  color: #fff;
 }
 
 .media-grid-video-thumb {
