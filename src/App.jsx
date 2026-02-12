@@ -8,12 +8,12 @@ const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.BIN_ID}`
 
 // BIGBANG 成員列表與顏色
 const MEMBERS = [
+  { name: '全員', color: '#D4AF37' },
   { name: 'G-Dragon', color: '#ed609f' },
   { name: 'T.O.P', color: '#8fc126' },
   { name: '太陽', color: '#d7171e' },
   { name: '大聲', color: '#f4e727' },
   { name: '勝利', color: '#1e92c6' },
-  { name: '全員', color: '#D4AF37' },
 ]
 
 function getMemberColor(name) {
@@ -885,7 +885,7 @@ export default function App() {
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <label className="form-label">分類（可多選）</label>
-                    <div className="member-select">
+                    <div className="member-select category-select">
                       {Object.entries(CATEGORIES).map(([k, v]) => {
                         const isSelected = form.cats.includes(k)
                         return (

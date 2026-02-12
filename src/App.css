@@ -1169,12 +1169,28 @@ input[type="date"].form-input::after {
   .filter-btn {
     padding: 8px 14px;
     font-size: 12px;
+    flex-shrink: 0;
   }
 
   .filters {
     padding: 12px 12px;
     gap: 6px;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* 分類橫向滾動 */
+  .filter-row:first-child {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .filter-row:first-child::-webkit-scrollbar {
+    display: none;
   }
 
   /* Header 調整 */
@@ -1235,14 +1251,28 @@ input[type="date"].form-input::after {
     margin-bottom: 6px;
   }
 
-  /* 成員選擇 chips 更大 */
+  /* 成員選擇 chips */
   .member-chip {
-    padding: 10px 16px;
-    font-size: 14px;
+    padding: 6px 12px;
+    font-size: 12px;
+    flex-shrink: 0;
   }
 
   .member-select {
-    gap: 10px;
+    gap: 8px;
+  }
+
+  /* 分類用滾動 */
+  .category-select {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .category-select::-webkit-scrollbar {
+    display: none;
   }
 
   /* 按鈕更大更好點 */
