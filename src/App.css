@@ -520,3 +520,201 @@ input[type="date"].form-input::after {
   transform: translateY(-50%);
   pointer-events: none;
 }
+
+/* ========== Mobile Optimizations ========== */
+@media (max-width: 600px) {
+  /* 防止 iOS 縮放輸入框 */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* 更大的點擊區域 */
+  .filter-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .filters {
+    padding: 12px 12px;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Header 調整 */
+  .hero {
+    padding: 30px 16px 20px;
+  }
+
+  .identity-bar {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  /* 事件卡片 - 更好的觸控體驗 */
+  .event-card {
+    padding: 16px 14px;
+    margin-bottom: 10px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .event-card:active {
+    background: #222;
+  }
+
+  .month-col {
+    width: 36px;
+    font-size: 1rem;
+  }
+
+  /* Modal 全螢幕 */
+  .overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 32px;
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  }
+
+  /* 表單輸入更大更好點 */
+  .form-input {
+    padding: 12px 14px;
+    font-size: 16px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+  }
+
+  .form-label {
+    font-size: 11px;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+
+  /* 成員選擇 chips 更大 */
+  .member-chip {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .member-select {
+    gap: 10px;
+  }
+
+  /* 按鈕更大更好點 */
+  .gold-btn {
+    padding: 12px 20px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .del-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  /* 標籤更好點擊 */
+  .cat-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .member-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .link-tag {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  /* 作者按鈕更大 */
+  .author-btn {
+    padding: 20px 16px;
+    gap: 8px;
+  }
+
+  .author-btn span:first-child {
+    font-size: 2.2rem;
+  }
+
+  .author-grid {
+    gap: 14px;
+  }
+
+  /* Toast 位置 */
+  .toast {
+    top: auto;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    left: 16px;
+    right: 16px;
+    transform: none;
+    text-align: center;
+  }
+
+  /* 媒體顯示 */
+  .media-link-card {
+    padding: 14px 16px;
+  }
+
+  .card-thumbnail {
+    max-width: 160px;
+  }
+
+  .card-thumbnail img {
+    height: 100px;
+  }
+
+  /* 分隔線間距 */
+  .divider {
+    margin: 20px 0;
+  }
+
+  /* Year header */
+  .year-header {
+    top: 52px;
+    padding-bottom: 10px;
+  }
+
+  /* Timeline 間距 */
+  .timeline {
+    padding: 24px 12px 100px;
+  }
+
+  /* Footer 安全區域 */
+  .footer {
+    padding-bottom: calc(50px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 針對非常小的螢幕 */
+@media (max-width: 380px) {
+  .author-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .member-chip {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .modal {
+    padding: 16px 12px 28px;
+  }
+}
+
+/* iOS Safari 安全區域 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .modal {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
