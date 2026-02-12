@@ -6,8 +6,19 @@ import { DEFAULT_EVENTS } from './data/defaultEvents'
 
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.BIN_ID}`
 
-// BIGBANG 成員列表
-const MEMBERS = ['G-Dragon', 'T.O.P', '太陽', '大聲', '勝利', '全員']
+// BIGBANG 成員列表與顏色
+const MEMBERS = [
+  { name: 'G-Dragon', color: '#ed609f' },
+  { name: 'T.O.P', color: '#8fc126' },
+  { name: '太陽', color: '#d7171e' },
+  { name: '大聲', color: '#f4e727' },
+  { name: '勝利', color: '#1e92c6' },
+  { name: '全員', color: '#D4AF37' },
+]
+
+function getMemberColor(name) {
+  return MEMBERS.find(m => m.name === name)?.color || '#D4AF37'
+}
 
 // ========== 工具函式 ==========
 function genId() {
@@ -602,7 +613,7 @@ export default function App() {
                   )}
                   {ev.members && ev.members.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {ev.members.map(m => <span key={m} className="member-tag">{m}</span>)}
+                      {ev.members.map(m => <span key={m} className="member-tag" style={{ borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
                     </div>
                   )}
                 </div>
@@ -683,14 +694,15 @@ export default function App() {
                 <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="事件描述" rows={3} className="form-input" />
                 <label className="form-label">成員</label>
                 <div className="member-select">
-                  {MEMBERS.map(m => {
-                    const isSelected = form.members.includes(m)
-                    const isAll = m === '全員'
+                  {MEMBERS.map(member => {
+                    const isSelected = form.members.includes(member.name)
+                    const isAll = member.name === '全員'
                     return (
                       <button
-                        key={m}
+                        key={member.name}
                         type="button"
                         className={`member-chip ${isSelected ? 'selected' : ''}`}
+                        style={isSelected ? { background: member.color + '22', borderColor: member.color, color: member.color } : {}}
                         onClick={() => {
                           if (isAll) {
                             // 點全員：如果已選全員則清空，否則只選全員
@@ -700,16 +712,16 @@ export default function App() {
                             setForm(f => {
                               let newMembers = f.members.filter(x => x !== '全員')
                               if (isSelected) {
-                                newMembers = newMembers.filter(x => x !== m)
+                                newMembers = newMembers.filter(x => x !== member.name)
                               } else {
-                                newMembers = [...newMembers, m]
+                                newMembers = [...newMembers, member.name]
                               }
                               return { ...f, members: newMembers }
                             })
                           }
                         }}
                       >
-                        {m}
+                        {member.name}
                       </button>
                     )
                   })}
@@ -827,7 +839,7 @@ export default function App() {
                 <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 4 }}>{viewEvent.desc}</p>
                 {viewEvent.members?.length > 0 && (
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
-                    {viewEvent.members.map(m => <span key={m} className="member-tag" style={{ fontSize: 10, padding: '2px 7px' }}>{m}</span>)}
+                    {viewEvent.members.map(m => <span key={m} className="member-tag" style={{ fontSize: 10, padding: '2px 7px', borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
                   </div>
                 )}
 
