@@ -6,6 +6,9 @@ import { DEFAULT_EVENTS } from './data/defaultEvents'
 
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.BIN_ID}`
 
+// BIGBANG 成員列表
+const MEMBERS = ['G-Dragon', 'T.O.P', '太陽', '大聲', '勝利', '全員']
+
 // ========== 工具函式 ==========
 function genId() {
   return 'e-' + Date.now()
@@ -159,7 +162,7 @@ export default function App() {
   // Form state
   const [form, setForm] = useState({
     id: '', year: 2025, month: 1, cat: 'music', title: '', desc: '',
-    membersStr: '', links: [], notes: [], media: [], editLog: []
+    members: [], links: [], notes: [], media: [], editLog: []
   })
   const [linkUrl, setLinkUrl] = useState('')
   const [linkLabel, setLinkLabel] = useState('')
@@ -255,7 +258,7 @@ export default function App() {
       cat: ev.cat,
       title: ev.title,
       desc: ev.desc,
-      membersStr: (ev.members || []).join(', '),
+      members: [...(ev.members || [])],
       links: JSON.parse(JSON.stringify(ev.links || [])),
       notes: JSON.parse(JSON.stringify(ev.notes || [])),
       media: JSON.parse(JSON.stringify(ev.media || [])),
@@ -274,7 +277,7 @@ export default function App() {
     const newId = genId()
     setForm({
       id: newId, year: 2025, month: 1, cat: 'music',
-      title: '', desc: '', membersStr: '全員',
+      title: '', desc: '', members: ['全員'],
       links: [], notes: [], media: [], editLog: []
     })
     setLinkUrl(''); setLinkLabel(''); setNoteInput(''); setMediaUrl('')
@@ -296,7 +299,7 @@ export default function App() {
       cat: form.cat,
       title: form.title,
       desc: form.desc,
-      members: form.membersStr.split(',').map(s => s.trim()).filter(Boolean),
+      members: form.members,
       links: form.links,
       notes: form.notes,
       media: form.media,
@@ -639,8 +642,39 @@ export default function App() {
                 <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="事件標題" className="form-input" />
                 <label className="form-label">描述</label>
                 <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="事件描述" rows={3} className="form-input" />
-                <label className="form-label">成員（逗號分隔）</label>
-                <input value={form.membersStr} onChange={e => setForm(f => ({ ...f, membersStr: e.target.value }))} placeholder="G-Dragon, T.O.P, 太陽, 大聲, 勝利" className="form-input" />
+                <label className="form-label">成員</label>
+                <div className="member-select">
+                  {MEMBERS.map(m => {
+                    const isSelected = form.members.includes(m)
+                    const isAll = m === '全員'
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`member-chip ${isSelected ? 'selected' : ''}`}
+                        onClick={() => {
+                          if (isAll) {
+                            // 點全員：如果已選全員則清空，否則只選全員
+                            setForm(f => ({ ...f, members: isSelected ? [] : ['全員'] }))
+                          } else {
+                            // 點個別成員：移除全員，切換該成員
+                            setForm(f => {
+                              let newMembers = f.members.filter(x => x !== '全員')
+                              if (isSelected) {
+                                newMembers = newMembers.filter(x => x !== m)
+                              } else {
+                                newMembers = [...newMembers, m]
+                              }
+                              return { ...f, members: newMembers }
+                            })
+                          }
+                        }}
+                      >
+                        {m}
+                      </button>
+                    )
+                  })}
+                </div>
 
                 <div className="divider" />
 
