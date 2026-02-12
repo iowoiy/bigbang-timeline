@@ -382,6 +382,191 @@ textarea.form-input {
   white-space: nowrap;
 }
 
+/* ========== Quick Comment ========== */
+.quick-comment {
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+/* ========== Card Actions (右側圖示) ========== */
+.card-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: center;
+}
+
+.card-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.card-icon-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.card-icon-btn.active {
+  background: rgba(212, 175, 55, 0.25);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3);
+}
+
+.icon-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: #D4AF37;
+  color: #0A0A0A;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+/* ========== Inline Comments (展開留言區) ========== */
+.inline-comments {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid rgba(212, 175, 55, 0.2);
+  padding: 8px 12px;
+  margin-left: 52px;
+  margin-bottom: 8px;
+}
+
+.inline-comment-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.inline-comment-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.inline-comment-text {
+  flex: 1;
+  color: #aaa;
+}
+
+.inline-comment-time {
+  font-size: 10px;
+  color: #444;
+  flex-shrink: 0;
+}
+
+.inline-comment-delete {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 10px;
+  padding: 2px 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.inline-comment-item:hover .inline-comment-delete {
+  opacity: 1;
+}
+
+.inline-comment-delete:hover {
+  color: #E63946;
+}
+
+/* ========== 底部留言輸入條 ========== */
+.comment-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1A1A1A;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 8000;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.comment-bar-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.comment-bar input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #F5F5F0;
+  outline: none;
+}
+
+.comment-bar input:focus {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.comment-bar button {
+  padding: 10px 20px;
+  background: #D4AF37;
+  border: none;
+  border-radius: 20px;
+  color: #0A0A0A;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.comment-bar button:hover {
+  filter: brightness(1.1);
+}
+
+.comment-bar-close {
+  background: transparent !important;
+  color: #666 !important;
+  padding: 10px !important;
+  font-size: 16px !important;
+}
+
+.comment-bar-close:hover {
+  color: #999 !important;
+}
+
 .divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.06);
@@ -719,6 +904,33 @@ input[type="date"].form-input::after {
 
   .card-thumbnail img {
     height: 100px;
+  }
+
+  /* 卡片圖示 */
+  .card-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .card-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  /* 內嵌留言區 */
+  .inline-comments {
+    margin-left: 40px;
+    padding: 10px 12px;
+  }
+
+  .inline-comment-delete {
+    opacity: 0.5;
+  }
+
+  /* 底部留言條 */
+  .comment-bar input {
+    font-size: 16px;
   }
 
   /* 分隔線間距 */

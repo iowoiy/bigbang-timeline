@@ -175,6 +175,8 @@ export default function App() {
     id: '', year: 2025, month: 1, day: 1, cats: ['music'], title: '', desc: '',
     members: [], links: [], notes: [], media: [], editLog: []
   })
+  const [expandedId, setExpandedId] = useState(null) // 展開留言的卡片 ID
+  const [inlineNote, setInlineNote] = useState('') // 內嵌留言輸入
   const [linkUrl, setLinkUrl] = useState('')
   const [linkLabel, setLinkLabel] = useState('')
   const [noteInput, setNoteInput] = useState('')
@@ -469,6 +471,48 @@ export default function App() {
     }))
   }
 
+  // 內嵌留言儲存（直接在時間軸上）
+  const saveInlineNote = (eventId) => {
+    if (!inlineNote.trim()) return
+    const ev = events.find(e => e.id === eventId)
+    if (!ev) return
+    const newNote = { text: inlineNote.trim(), author: me, ts: Date.now() }
+    const updated = {
+      ...ev,
+      notes: [...(ev.notes || []), newNote],
+      editLog: [...(ev.editLog || []), { author: me, action: '留言', ts: Date.now() }]
+    }
+    persist(events.map(e => e.id === updated.id ? updated : e))
+    setInlineNote('')
+    flash('✅ 留言已送出')
+  }
+
+  // 展開/收起留言
+  const toggleExpand = (ev, e) => {
+    e.stopPropagation()
+    if (expandedId === ev.id) {
+      setExpandedId(null)
+      setInlineNote('')
+    } else {
+      setExpandedId(ev.id)
+      setInlineNote('')
+    }
+  }
+
+  // 刪除內嵌留言
+  const deleteInlineNote = (eventId, noteIndex) => {
+    const ev = events.find(e => e.id === eventId)
+    if (!ev) return
+    const newNotes = ev.notes.filter((_, i) => i !== noteIndex)
+    const updated = {
+      ...ev,
+      notes: newNotes,
+      editLog: [...(ev.editLog || []), { author: me, action: '刪除留言', ts: Date.now() }]
+    }
+    persist(events.map(e => e.id === updated.id ? updated : e))
+    flash('🗑 留言已刪除')
+  }
+
   // ========== 選擇身份 ==========
   if (!me) {
     return (
@@ -569,62 +613,97 @@ export default function App() {
             {sortedEvents(byYear[year]).map(ev => {
               // 取得第一個分類顏色（相容舊資料）
               const primaryCat = (ev.cats && ev.cats[0]) || ev.cat || 'music'
+              const isExpanded = expandedId === ev.id
               return (
-              <div
-                key={ev.id}
-                className="event-card"
-                style={{ borderLeft: '3px solid ' + catColor(primaryCat) }}
-                onClick={() => openView(ev)}
-              >
-                <div className="month-col" style={{ color: catColor(primaryCat) }}>{dateLabel(ev.month, ev.day)}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                    {/* 顯示多個分類標籤，相容舊資料 */}
-                    {(ev.cats || [ev.cat]).filter(Boolean).map(c => (
-                      <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
-                    ))}
-                    {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F' }}>📎 已補充</span>}
-                    {(ev.media?.length > 0) && <span style={{ fontSize: 9, color: '#D4AF37' }}>🖼️ {ev.media.length}</span>}
-                    {lastEditor(ev) && (
-                      <span style={{ fontSize: 9, color: '#555' }}>·
-                        <span className="abadge sm" style={badgeStyle(lastEditor(ev))}>{authorEmoji(lastEditor(ev))} {authorName(lastEditor(ev))}</span>
-                      </span>
+              <div key={ev.id}>
+                <div
+                  className="event-card"
+                  style={{ borderLeft: '3px solid ' + catColor(primaryCat) }}
+                >
+                  <div className="month-col" style={{ color: catColor(primaryCat) }}>{dateLabel(ev.month, ev.day)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }} onClick={() => openView(ev)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                      {/* 顯示多個分類標籤，相容舊資料 */}
+                      {(ev.cats || [ev.cat]).filter(Boolean).map(c => (
+                        <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
+                      ))}
+                      {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F' }}>📎 已補充</span>}
+                      {(ev.media?.length > 0) && <span style={{ fontSize: 9, color: '#D4AF37' }}>🖼️ {ev.media.length}</span>}
+                      {lastEditor(ev) && (
+                        <span style={{ fontSize: 9, color: '#555' }}>·
+                          <span className="abadge sm" style={badgeStyle(lastEditor(ev))}>{authorEmoji(lastEditor(ev))} {authorName(lastEditor(ev))}</span>
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.4 }}>{ev.title}</div>
+                    <div style={{ fontSize: 12, color: '#777', lineHeight: 1.6 }}>{ev.desc}</div>
+
+                    {/* 媒體預覽（卡片中只顯示第一張圖） */}
+                    {ev.media?.length > 0 && isImageUrl(ev.media[0].url) && (
+                      <div className="card-thumbnail" onClick={e => e.stopPropagation()}>
+                        <img src={ev.media[0].url} alt="" />
+                      </div>
+                    )}
+
+                    {ev.links && ev.links.length > 0 && (
+                      <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {ev.links.map((lk, i) => (
+                          <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="link-tag" onClick={e => e.stopPropagation()}>
+                            🔗 {lk.label}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {ev.notes && ev.notes.length > 0 && (
+                      <div style={{ marginTop: 5, fontSize: 11, color: '#999', fontStyle: 'italic', borderLeft: '2px solid rgba(212,175,55,0.2)', paddingLeft: 8 }}>
+                        💬 {ev.notes[ev.notes.length - 1].text} —
+                        <span className="abadge sm" style={badgeStyle(ev.notes[ev.notes.length - 1].author)}>
+                          {authorEmoji(ev.notes[ev.notes.length - 1].author)} {authorName(ev.notes[ev.notes.length - 1].author)}
+                        </span>
+                      </div>
+                    )}
+                    {ev.members && ev.members.length > 0 && (
+                      <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {ev.members.map(m => <span key={m} className="member-tag" style={{ borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
+                      </div>
                     )}
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.4 }}>{ev.title}</div>
-                  <div style={{ fontSize: 12, color: '#777', lineHeight: 1.6 }}>{ev.desc}</div>
-
-                  {/* 媒體預覽（卡片中只顯示第一張圖） */}
-                  {ev.media?.length > 0 && isImageUrl(ev.media[0].url) && (
-                    <div className="card-thumbnail" onClick={e => e.stopPropagation()}>
-                      <img src={ev.media[0].url} alt="" />
-                    </div>
-                  )}
-
-                  {ev.links && ev.links.length > 0 && (
-                    <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                      {ev.links.map((lk, i) => (
-                        <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="link-tag" onClick={e => e.stopPropagation()}>
-                          🔗 {lk.label}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                  {ev.notes && ev.notes.length > 0 && (
-                    <div style={{ marginTop: 5, fontSize: 11, color: '#999', fontStyle: 'italic', borderLeft: '2px solid rgba(212,175,55,0.2)', paddingLeft: 8 }}>
-                      💬 {ev.notes[ev.notes.length - 1].text} —
-                      <span className="abadge sm" style={badgeStyle(ev.notes[ev.notes.length - 1].author)}>
-                        {authorEmoji(ev.notes[ev.notes.length - 1].author)} {authorName(ev.notes[ev.notes.length - 1].author)}
-                      </span>
-                    </div>
-                  )}
-                  {ev.members && ev.members.length > 0 && (
-                    <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {ev.members.map(m => <span key={m} className="member-tag" style={{ borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
-                    </div>
-                  )}
+                  {/* 右側圖示區 */}
+                  <div className="card-actions">
+                    <button
+                      className={`card-icon-btn ${isExpanded ? 'active' : ''}`}
+                      onClick={(e) => toggleExpand(ev, e)}
+                      title="留言"
+                    >
+                      💬
+                      {ev.notes?.length > 0 && <span className="icon-badge">{ev.notes.length}</span>}
+                    </button>
+                    <button
+                      className="card-icon-btn"
+                      onClick={(e) => { e.stopPropagation(); openView(ev) }}
+                      title="編輯"
+                    >
+                      ✏️
+                    </button>
+                  </div>
                 </div>
-                <div style={{ flexShrink: 0, alignSelf: 'center', fontSize: 12, color: '#444' }}>✏️</div>
+                {/* 展開留言紀錄 */}
+                {isExpanded && ev.notes && ev.notes.length > 0 && (
+                  <div className="inline-comments">
+                    {ev.notes.map((n, i) => (
+                      <div key={i} className="inline-comment-item">
+                        <span style={{ color: authorColor(n.author), fontSize: 11 }}>{authorEmoji(n.author)} {authorName(n.author)}</span>
+                        <span className="inline-comment-text">{n.text}</span>
+                        <span className="inline-comment-time">{formatTime(n.ts)}</span>
+                        <button
+                          onClick={() => deleteInlineNote(ev.id, i)}
+                          className="inline-comment-delete"
+                          title="刪除"
+                        >✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               )
             })}
@@ -798,22 +877,6 @@ export default function App() {
 
                 <div className="divider" />
 
-                {/* Notes */}
-                <label className="form-label">💬 備註留言</label>
-                {form.notes.map((n, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
-                    <span style={{ flex: 1, fontSize: 11, color: '#aaa' }}>{n.text}</span>
-                    {n.author && <span className="abadge sm" style={badgeStyle(n.author)}>{authorEmoji(n.author)} {authorName(n.author)}</span>}
-                    <button onClick={() => removeNote(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                  <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNote()} placeholder="寫點什麼..." className="form-input" style={{ flex: 1, marginBottom: 0 }} />
-                  <button onClick={addNote} className="gold-btn">+</button>
-                </div>
-
-                <div className="divider" />
-
                 <div className="form-actions">
                   <button onClick={closeModal} className="cancel-btn">取消</button>
                   <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn save-btn">{saving ? '儲存中...' : '💾 儲存'}</button>
@@ -834,8 +897,8 @@ export default function App() {
             {/* View Mode */}
             {modal.mode === 'view' && viewEvent && (
               <div>
+                {/* 事件基本資訊 */}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
-                  {/* 顯示多個分類標籤，相容舊資料 */}
                   {(viewEvent.cats || [viewEvent.cat]).filter(Boolean).map(c => (
                     <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
                   ))}
@@ -844,7 +907,7 @@ export default function App() {
                 <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{viewEvent.title}</h3>
                 <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 4 }}>{viewEvent.desc}</p>
                 {viewEvent.members?.length > 0 && (
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
                     {viewEvent.members.map(m => <span key={m} className="member-tag" style={{ fontSize: 10, padding: '2px 7px', borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
                   </div>
                 )}
@@ -935,31 +998,9 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Notes in view */}
-                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>💬 備註留言</h4>
-                {form.notes?.length > 0 ? (
-                  form.notes.map((n, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: 12, color: '#bbb' }}>{n.text}</span>
-                        <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>
-                          {n.author && <span className="abadge sm" style={badgeStyle(n.author)}>{authorEmoji(n.author)} {authorName(n.author)}</span>}
-                          {' '}{formatTime(n.ts)}
-                        </div>
-                      </div>
-                      <button onClick={() => removeNote(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
-                    </div>
-                  ))
-                ) : (
-                  <p style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>尚無備註</p>
-                )}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-                  <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNoteAndSave()} placeholder="寫點什麼..." className="form-input" style={{ flex: 1, marginBottom: 0, fontSize: 12 }} />
-                  <button onClick={addNoteAndSave} className="gold-btn">+ 留言</button>
-                </div>
-
                 <div className="divider" />
 
+                {/* 底部操作區 */}
                 <div className="form-actions">
                   <button onClick={() => setShowLog(!showLog)} className="cancel-btn">{showLog ? '收起紀錄' : '📜 編輯紀錄'}</button>
                   <button onClick={() => setModal(m => ({ ...m, mode: 'edit' }))} className="gold-btn save-btn">✏️ 編輯</button>
@@ -983,6 +1024,23 @@ export default function App() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 底部留言輸入條 */}
+      {expandedId && (
+        <div className="comment-bar">
+          <div className="comment-bar-inner">
+            <input
+              value={inlineNote}
+              onChange={e => setInlineNote(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveInlineNote(expandedId)}
+              placeholder="寫點什麼..."
+              autoFocus
+            />
+            <button onClick={() => saveInlineNote(expandedId)}>送出</button>
+            <button onClick={() => { setExpandedId(null); setInlineNote('') }} className="comment-bar-close">✕</button>
           </div>
         </div>
       )}
