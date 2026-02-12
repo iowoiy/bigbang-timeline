@@ -419,31 +419,42 @@ export default function App() {
   }
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
 
-    // 檢查檔案大小 (最大 32MB)
-    if (file.size > 32 * 1024 * 1024) {
-      flash('❌ 檔案太大，最大 32MB')
-      return
-    }
+    // 過濾有效檔案
+    const validFiles = files.filter(file => {
+      if (file.size > 32 * 1024 * 1024) {
+        flash(`❌ ${file.name} 太大，最大 32MB`)
+        return false
+      }
+      if (!file.type.startsWith('image/')) {
+        flash(`❌ ${file.name} 不是圖片檔案`)
+        return false
+      }
+      return true
+    })
 
-    // 檢查檔案類型
-    if (!file.type.startsWith('image/')) {
-      flash('❌ 請選擇圖片檔案')
-      return
-    }
+    if (validFiles.length === 0) return
 
     setUploading(true)
-    try {
-      const url = await uploadToImgBB(file)
-      setForm(f => ({
-        ...f,
-        media: [...f.media, { url, author: me, ts: Date.now() }]
-      }))
-      flash('✅ 圖片上傳成功')
-    } catch {
-      flash('❌ 上傳失敗，請重試')
+    let successCount = 0
+
+    for (const file of validFiles) {
+      try {
+        const url = await uploadToImgBB(file)
+        setForm(f => ({
+          ...f,
+          media: [...f.media, { url, author: me, ts: Date.now() }]
+        }))
+        successCount++
+      } catch {
+        flash(`❌ ${file.name} 上傳失敗`)
+      }
+    }
+
+    if (successCount > 0) {
+      flash(`✅ 已上傳 ${successCount} 張圖片`)
     }
     setUploading(false)
     // 清空 input
@@ -854,6 +865,7 @@ export default function App() {
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleFileUpload}
                     style={{ display: 'none' }}
                   />
