@@ -771,9 +771,9 @@ export default function App() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    style={{ padding: '6px 12px', background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.3)', color: '#D4AF37', borderRadius: 6, fontSize: 11 }}
+                    className="upload-btn"
                   >
-                    {uploading ? '上傳中...' : '📤 上傳圖片'}
+                    {uploading ? '上傳中...' : '🖼️ 上傳'}
                   </button>
                 </div>
 
@@ -909,9 +909,9 @@ export default function App() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    style={{ padding: '6px 12px', background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.3)', color: '#D4AF37', borderRadius: 6, fontSize: 11 }}
+                    className="upload-btn"
                   >
-                    {uploading ? '上傳中...' : '📤 上傳'}
+                    {uploading ? '上傳中...' : '🖼️ 上傳'}
                   </button>
                 </div>
 
