@@ -666,10 +666,10 @@ export default function App() {
         {/* 成員篩選（多選） */}
         <div className="filter-dropdown">
           <button
-            className={`filter-btn dropdown-toggle ${memberFilter.length > 0 ? 'active' : ''}`}
+            className={`filter-btn dropdown-toggle member-toggle ${memberFilter.length > 0 ? 'active' : ''}`}
             onClick={() => { setMemberNavOpen(!memberNavOpen); setYearNavOpen(false) }}
           >
-            {memberFilter.length === 0 ? '成員' : memberFilter.length === 1 ? memberFilter[0] : `${memberFilter.length}位成員`} {memberNavOpen ? '▲' : '▼'}
+            {memberFilter.length === 0 ? '成員' : `成員(${memberFilter.length})`} {memberNavOpen ? '▲' : '▼'}
           </button>
           {memberNavOpen && (
             <div className="filter-dropdown-list">

@@ -177,12 +177,18 @@ a {
 .filter-btn.dropdown-toggle {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  min-width: 60px;
+}
+
+.filter-btn.dropdown-toggle.member-toggle {
+  min-width: 75px;
 }
 
 .filter-dropdown-list {
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: auto;
   left: 50%;
   transform: translateX(-50%);
   margin-top: 6px;
