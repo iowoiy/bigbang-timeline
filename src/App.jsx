@@ -957,9 +957,9 @@ export default function App() {
 
                 <div className="divider" />
 
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button onClick={() => setModal(m => ({ ...m, mode: 'edit' }))} className="gold-btn" style={{ padding: '8px 20px', fontSize: 12 }}>✏️ 編輯事件內容</button>
-                  <button onClick={() => setShowLog(!showLog)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 11, textDecoration: 'underline' }}>{showLog ? '收起' : '📜 編輯紀錄'}</button>
+                <div className="form-actions">
+                  <button onClick={() => setShowLog(!showLog)} className="cancel-btn">{showLog ? '收起紀錄' : '📜 編輯紀錄'}</button>
+                  <button onClick={() => setModal(m => ({ ...m, mode: 'edit' }))} className="gold-btn save-btn">✏️ 編輯</button>
                 </div>
 
                 {showLog && (
