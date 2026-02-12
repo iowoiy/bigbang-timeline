@@ -737,7 +737,7 @@ export default function App() {
               <div style={{ fontSize: 15, fontWeight: 700, color: '#D4AF37' }}>
                 {modal.mode === 'new' ? '＋ 新增事件' : modal.mode === 'edit' ? '✏️ 編輯事件' : '📋 事件詳情'}
               </div>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, lineHeight: 1 }}>✕</button>
+              <button onClick={closeModal} className="modal-close-btn">✕</button>
             </div>
 
             {/* Edit / New Form */}

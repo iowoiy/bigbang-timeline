@@ -356,6 +356,22 @@ a {
   animation: fadeInScale 0.3s ease-out;
 }
 
+/* Modal 關閉按鈕 */
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.modal-close-btn:hover {
+  color: #999;
+}
+
 .form-label {
   display: block;
   font-size: 10px;
@@ -1071,6 +1087,13 @@ input[type="date"].form-input::after {
   /* 分隔線間距 */
   .divider {
     margin: 20px 0;
+  }
+
+  /* Modal 關閉按鈕 */
+  .modal-close-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 24px;
   }
 
   /* Year header */
