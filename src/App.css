@@ -233,6 +233,20 @@ a {
   color: #D4AF37;
 }
 
+.sync-btn.syncing {
+  color: #D4AF37;
+  cursor: wait;
+}
+
+.sync-btn.syncing svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .add-btn {
   width: 36px;
   height: 36px;

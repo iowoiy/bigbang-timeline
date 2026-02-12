@@ -166,6 +166,7 @@ export default function App() {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [me, setMe] = useState(null)
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
@@ -242,6 +243,7 @@ export default function App() {
   }
 
   const refresh = async () => {
+    setSyncing(true)
     try {
       const data = await loadEvents()
       if (Array.isArray(data)) {
@@ -251,6 +253,7 @@ export default function App() {
     } catch {
       flash('載入失敗')
     }
+    setSyncing(false)
   }
 
   // 篩選與排序
@@ -657,7 +660,7 @@ export default function App() {
       <div className="top-bar">
         <div className="top-bar-left">
           <span className="top-bar-logo">BIGBANG</span>
-          <button onClick={refresh} className="sync-btn" title="同步"><RefreshCw size={14} /></button>
+          <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
           <button onClick={openNew} className="add-btn"><Plus size={20} /></button>
