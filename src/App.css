@@ -1330,7 +1330,7 @@ input[type="date"].form-input::after {
 
   /* 成員選擇 chips */
   .member-chip {
-    padding: 6px 12px;
+    padding: 4px 9px;
     font-size: 12px;
     flex-shrink: 0;
   }
