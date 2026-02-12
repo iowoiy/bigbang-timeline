@@ -670,6 +670,7 @@ export default function App() {
                   </div>
                   {/* 右側圖示區 */}
                   <div className="card-actions">
+                    {/* 留言功能暫時隱藏
                     <button
                       className={`card-icon-btn ${isExpanded ? 'active' : ''}`}
                       onClick={(e) => toggleExpand(ev, e)}
@@ -678,6 +679,7 @@ export default function App() {
                       💬
                       {ev.notes?.length > 0 && <span className="icon-badge">{ev.notes.length}</span>}
                     </button>
+                    */}
                     <button
                       className="card-icon-btn"
                       onClick={(e) => { e.stopPropagation(); openView(ev) }}
@@ -687,7 +689,7 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                {/* 展開留言紀錄 */}
+                {/* 展開留言紀錄 - 暫時隱藏
                 {isExpanded && ev.notes && ev.notes.length > 0 && (
                   <div className="inline-comments">
                     {ev.notes.map((n, i) => (
@@ -704,6 +706,7 @@ export default function App() {
                     ))}
                   </div>
                 )}
+                */}
               </div>
               )
             })}
@@ -1028,7 +1031,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 底部留言輸入條 */}
+      {/* 底部留言輸入條 - 暫時隱藏
       {expandedId && (
         <div className="comment-bar">
           <div className="comment-bar-inner">
@@ -1044,6 +1047,7 @@ export default function App() {
           </div>
         </div>
       )}
+      */}
     </div>
   )
 }
