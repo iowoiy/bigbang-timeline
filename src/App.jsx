@@ -788,10 +788,12 @@ export default function App() {
                     <button onClick={() => removeLink(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
                   </div>
                 ))}
-                <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                  <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱" className="form-input" style={{ flex: '1 1 100px', marginBottom: 0 }} />
-                  <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLink()} placeholder="網址" className="form-input" style={{ flex: '2 1 150px', marginBottom: 0 }} />
-                  <button onClick={addLink} className="gold-btn">+</button>
+                <div className="link-input-group">
+                  <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱（可選）" className="form-input" />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLink()} placeholder="貼上網址" className="form-input" style={{ flex: 1, marginBottom: 0 }} />
+                    <button onClick={addLink} className="gold-btn">+ 新增</button>
+                  </div>
                 </div>
 
                 <div className="divider" />
@@ -926,10 +928,12 @@ export default function App() {
                 ) : (
                   <p style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>尚無連結</p>
                 )}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-                  <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱" className="form-input" style={{ flex: '1 1 80px', marginBottom: 0, fontSize: 12 }} />
-                  <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLinkAndSave()} placeholder="網址 https://..." className="form-input" style={{ flex: '2 1 140px', marginBottom: 0, fontSize: 12 }} />
-                  <button onClick={addLinkAndSave} className="gold-btn">+ 新增</button>
+                <div className="link-input-group">
+                  <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱（可選）" className="form-input" />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLinkAndSave()} placeholder="貼上網址" className="form-input" style={{ flex: 1, marginBottom: 0 }} />
+                    <button onClick={addLinkAndSave} className="gold-btn">+ 新增</button>
+                  </div>
                 </div>
 
                 {/* Notes in view */}

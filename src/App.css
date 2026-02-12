@@ -360,6 +360,16 @@ textarea.form-input {
   font-size: 14px;
 }
 
+/* ========== Link Input Group ========== */
+.link-input-group {
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+
+.link-input-group .form-input:first-child {
+  margin-bottom: 6px;
+}
+
 .divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.06);
