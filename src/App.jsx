@@ -497,6 +497,48 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  // 處理貼上圖片
+  const handlePaste = async (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    const imageFiles = []
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) imageFiles.push(file)
+      }
+    }
+
+    if (imageFiles.length === 0) return
+
+    e.preventDefault()
+    setUploading(true)
+    let successCount = 0
+
+    for (const file of imageFiles) {
+      if (file.size > 32 * 1024 * 1024) {
+        flash('❌ 圖片太大，最大 32MB')
+        continue
+      }
+      try {
+        const url = await uploadToImgBB(file)
+        setForm(f => ({
+          ...f,
+          media: [...f.media, { url, author: me, ts: Date.now() }]
+        }))
+        successCount++
+      } catch {
+        flash('❌ 圖片上傳失敗')
+      }
+    }
+
+    if (successCount > 0) {
+      flash(`✅ 已貼上 ${successCount} 張圖片`)
+    }
+    setUploading(false)
+  }
+
   const addMediaAndSave = () => {
     if (!mediaUrl.trim()) return
     let u = mediaUrl.trim()
@@ -968,6 +1010,7 @@ export default function App() {
                     value={mediaUrl}
                     onChange={e => setMediaUrl(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addMediaUrl()}
+                    onPaste={handlePaste}
                     placeholder="貼上圖片或 YouTube / IG / X 連結"
                     className="form-input"
                     style={{ flex: '1 1 200px', marginBottom: 0 }}
