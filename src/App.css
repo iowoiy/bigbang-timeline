@@ -127,7 +127,7 @@ a {
 /* ========== Header ========== */
 .hero {
   text-align: center;
-  padding: 40px 20px 24px;
+  padding: 45px 20px 24px;
   animation: fadeInUp 0.5s ease-out;
 }
 
@@ -1179,7 +1179,7 @@ input[type="date"].form-input::after {
 
   /* Header 調整 */
   .hero {
-    padding: 30px 16px 20px;
+    padding: 45px 16px 20px;
   }
 
   .identity-bar {
