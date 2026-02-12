@@ -874,7 +874,7 @@ export default function App() {
                     disabled={uploading}
                     className="upload-btn"
                   >
-                    {uploading ? '上傳中...' : '🖼️ 上傳'}
+                    {uploading ? '上傳中...' : '📷 上傳圖片'}
                   </button>
                 </div>
 
