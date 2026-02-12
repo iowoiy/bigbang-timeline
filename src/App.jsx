@@ -597,12 +597,17 @@ export default function App() {
       {/* Toast */}
       {toast && <div className="toast">{toast}</div>}
 
-      {/* 右上角登入資訊 */}
-      <div className="top-bar">
+      {/* 左上角：身份 + 同步 */}
+      <div className="top-bar left">
         <div className="identity-bar">
           <span className="abadge" style={badgeStyle(me)}>{authorEmoji(me)} {authorName(me)}</span>
-          {/* <button onClick={() => setMe(null)} className="switch-btn">切換</button> */}
+          <button onClick={refresh} className="sync-btn" title="同步">🔄</button>
         </div>
+      </div>
+
+      {/* 右上角：新增事件 */}
+      <div className="top-bar right">
+        <button onClick={openNew} className="add-btn">＋</button>
       </div>
 
       {/* Header */}
@@ -615,94 +620,93 @@ export default function App() {
           <div style={{ textAlign: 'center' }}><div className="stat-num">{supplementedCount}</div><div className="stat-label">已補充</div></div>
           <div style={{ textAlign: 'center' }}><div className="stat-num">{yearSpan}</div><div className="stat-label">年</div></div>
         </div>
-        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={refresh} style={{ padding: '6px 16px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', color: '#D4AF37', borderRadius: 20, fontSize: 11 }}>🔄 同步</button>
-          <button onClick={openNew} style={{ padding: '6px 16px', background: '#D4AF37', border: 'none', color: '#0A0A0A', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>＋ 新增事件</button>
-        </div>
       </div>
 
       {/* Filters */}
       <div className="filters">
-        {/* 分類篩選 */}
-        <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
-          全部 <span style={{ opacity: 0.6, fontSize: 10 }}>{events.length}</span>
-        </button>
-        {Object.entries(CATEGORIES).map(([key, cat]) => (
-          <button
-            key={key}
-            className={`filter-btn ${filter === key ? 'active' : ''}`}
-            onClick={() => setFilter(key)}
-          >
-            {cat.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{events.filter(e => (e.cats && e.cats.includes(key)) || e.cat === key).length}</span>
+        {/* 第一排：分類篩選 */}
+        <div className="filter-row">
+          <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+            全部 <span style={{ opacity: 0.6, fontSize: 10 }}>{events.length}</span>
           </button>
-        ))}
-
-        <span className="filter-divider">|</span>
-
-        {/* 年份篩選 */}
-        <div className="filter-dropdown">
-          <button
-            className="filter-btn dropdown-toggle"
-            onClick={() => { setYearNavOpen(!yearNavOpen); setMemberNavOpen(false) }}
-          >
-            年份 {yearNavOpen ? '▲' : '▼'}
-          </button>
-          {yearNavOpen && (
-            <div className="filter-dropdown-list">
-              {years.map(year => (
-                <button
-                  key={year}
-                  className="filter-dropdown-item"
-                  onClick={() => {
-                    const el = document.getElementById(`year-${year}`)
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    setYearNavOpen(false)
-                  }}
-                >
-                  {year}
-                </button>
-              ))}
-            </div>
-          )}
+          {Object.entries(CATEGORIES).map(([key, cat]) => (
+            <button
+              key={key}
+              className={`filter-btn ${filter === key ? 'active' : ''}`}
+              onClick={() => setFilter(key)}
+            >
+              {cat.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{events.filter(e => (e.cats && e.cats.includes(key)) || e.cat === key).length}</span>
+            </button>
+          ))}
         </div>
 
-        {/* 成員篩選（多選） */}
-        <div className="filter-dropdown">
-          <button
-            className={`filter-btn dropdown-toggle member-toggle ${memberFilter.length > 0 ? 'active' : ''}`}
-            onClick={() => { setMemberNavOpen(!memberNavOpen); setYearNavOpen(false) }}
-          >
-            {memberFilter.length === 0 ? '成員' : `成員(${memberFilter.length})`} {memberNavOpen ? '▲' : '▼'}
-          </button>
-          {memberNavOpen && (
-            <div className="filter-dropdown-list">
-              <button
-                className={`filter-dropdown-item ${memberFilter.length === 0 ? 'active' : ''}`}
-                onClick={() => setMemberFilter([])}
-              >
-                全部
-              </button>
-              {MEMBERS.filter(m => m.name !== '全員').map(m => (
+        {/* 第二排：年份 + 成員 */}
+        <div className="filter-row">
+          {/* 年份篩選 */}
+          <div className="filter-dropdown">
+            <button
+              className="filter-btn dropdown-toggle"
+              onClick={() => { setYearNavOpen(!yearNavOpen); setMemberNavOpen(false) }}
+            >
+              年份 {yearNavOpen ? '▲' : '▼'}
+            </button>
+            {yearNavOpen && (
+              <div className="filter-dropdown-list">
+                {years.map(year => (
+                  <button
+                    key={year}
+                    className="filter-dropdown-item"
+                    onClick={() => {
+                      const el = document.getElementById(`year-${year}`)
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      setYearNavOpen(false)
+                    }}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 成員篩選（多選） */}
+          <div className="filter-dropdown">
+            <button
+              className={`filter-btn dropdown-toggle member-toggle ${memberFilter.length > 0 ? 'active' : ''}`}
+              onClick={() => { setMemberNavOpen(!memberNavOpen); setYearNavOpen(false) }}
+            >
+              {memberFilter.length === 0 ? '成員' : `成員(${memberFilter.length})`} {memberNavOpen ? '▲' : '▼'}
+            </button>
+            {memberNavOpen && (
+              <div className="filter-dropdown-list">
                 <button
-                  key={m.name}
-                  className={`filter-dropdown-item ${memberFilter.includes(m.name) ? 'active' : ''}`}
-                  style={{
-                    color: memberFilter.includes(m.name) ? m.color : undefined,
-                    borderColor: memberFilter.includes(m.name) ? m.color : undefined
-                  }}
-                  onClick={() => {
-                    if (memberFilter.includes(m.name)) {
-                      setMemberFilter(memberFilter.filter(x => x !== m.name))
-                    } else {
-                      setMemberFilter([...memberFilter, m.name])
-                    }
-                  }}
+                  className={`filter-dropdown-item ${memberFilter.length === 0 ? 'active' : ''}`}
+                  onClick={() => setMemberFilter([])}
                 >
-                  {memberFilter.includes(m.name) ? '✓ ' : ''}{m.name}
+                  全部
                 </button>
-              ))}
-            </div>
-          )}
+                {MEMBERS.filter(m => m.name !== '全員').map(m => (
+                  <button
+                    key={m.name}
+                    className={`filter-dropdown-item ${memberFilter.includes(m.name) ? 'active' : ''}`}
+                    style={{
+                      color: memberFilter.includes(m.name) ? m.color : undefined,
+                      borderColor: memberFilter.includes(m.name) ? m.color : undefined
+                    }}
+                    onClick={() => {
+                      if (memberFilter.includes(m.name)) {
+                        setMemberFilter(memberFilter.filter(x => x !== m.name))
+                      } else {
+                        setMemberFilter([...memberFilter, m.name])
+                      }
+                    }}
+                  >
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
