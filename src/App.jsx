@@ -161,7 +161,7 @@ export default function App() {
 
   // Form state
   const [form, setForm] = useState({
-    id: '', year: 2025, month: 1, cat: 'music', title: '', desc: '',
+    id: '', year: 2025, month: 1, cats: ['music'], title: '', desc: '',
     members: [], links: [], notes: [], media: [], editLog: []
   })
   const [linkUrl, setLinkUrl] = useState('')
@@ -215,7 +215,13 @@ export default function App() {
 
   // 篩選與排序
   const filtered = useMemo(() => {
-    return filter === 'all' ? events : events.filter(e => e.cat === filter)
+    if (filter === 'all') return events
+    // 相容舊資料：支援 cats 陣列或 cat 字串
+    return events.filter(e => {
+      if (e.cats && e.cats.includes(filter)) return true
+      if (e.cat === filter) return true
+      return false
+    })
   }, [events, filter])
 
   const byYear = useMemo(() => {
@@ -251,11 +257,13 @@ export default function App() {
 
   // Modal helpers
   const setFormFromEvent = (ev) => {
+    // 相容舊資料：cat 字串轉成 cats 陣列
+    const cats = ev.cats ? [...ev.cats] : (ev.cat ? [ev.cat] : ['music'])
     setForm({
       id: ev.id,
       year: ev.year,
       month: ev.month,
-      cat: ev.cat,
+      cats: cats,
       title: ev.title,
       desc: ev.desc,
       members: [...(ev.members || [])],
@@ -276,7 +284,7 @@ export default function App() {
   const openNew = () => {
     const newId = genId()
     setForm({
-      id: newId, year: 2025, month: 1, cat: 'music',
+      id: newId, year: 2025, month: 1, cats: ['music'],
       title: '', desc: '', members: ['全員'],
       links: [], notes: [], media: [], editLog: []
     })
@@ -296,7 +304,8 @@ export default function App() {
       id: form.id,
       year: parseInt(form.year) || 2025,
       month: parseInt(form.month) || 1,
-      cat: form.cat,
+      cats: form.cats,
+      cat: form.cats[0] || 'music', // 保留 cat 欄位相容舊資料
       title: form.title,
       desc: form.desc,
       members: form.members,
@@ -517,7 +526,7 @@ export default function App() {
             className={`filter-btn ${filter === key ? 'active' : ''}`}
             onClick={() => setFilter(key)}
           >
-            {cat.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{events.filter(e => e.cat === key).length}</span>
+            {cat.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{events.filter(e => (e.cats && e.cats.includes(key)) || e.cat === key).length}</span>
           </button>
         ))}
       </div>
@@ -539,17 +548,23 @@ export default function App() {
                 </span>
               ))}
             </div>
-            {sortedEvents(byYear[year]).map(ev => (
+            {sortedEvents(byYear[year]).map(ev => {
+              // 取得第一個分類顏色（相容舊資料）
+              const primaryCat = (ev.cats && ev.cats[0]) || ev.cat || 'music'
+              return (
               <div
                 key={ev.id}
                 className="event-card"
-                style={{ borderLeft: '3px solid ' + catColor(ev.cat) }}
+                style={{ borderLeft: '3px solid ' + catColor(primaryCat) }}
                 onClick={() => openView(ev)}
               >
-                <div className="month-col" style={{ color: catColor(ev.cat) }}>{monthLabel(ev.month)}</div>
+                <div className="month-col" style={{ color: catColor(primaryCat) }}>{monthLabel(ev.month)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                    <span className="cat-tag" style={{ background: catBg(ev.cat), color: catColor(ev.cat) }}>{catLabel(ev.cat)}</span>
+                    {/* 顯示多個分類標籤，相容舊資料 */}
+                    {(ev.cats || [ev.cat]).filter(Boolean).map(c => (
+                      <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
+                    ))}
                     {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F' }}>📎 已補充</span>}
                     {(ev.media?.length > 0) && <span style={{ fontSize: 9, color: '#D4AF37' }}>🖼️ {ev.media.length}</span>}
                     {lastEditor(ev) && (
@@ -593,7 +608,8 @@ export default function App() {
                 </div>
                 <div style={{ flexShrink: 0, alignSelf: 'center', fontSize: 12, color: '#444' }}>✏️</div>
               </div>
-            ))}
+              )
+            })}
           </div>
         ))}
         {filtered.length === 0 && <div className="empty-state">此分類暫無資料</div>}
@@ -620,7 +636,7 @@ export default function App() {
             {/* Edit / New Form */}
             {isEditing && (
               <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                   <div>
                     <label className="form-label">年份</label>
                     <input type="number" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} className="form-input" />
@@ -631,12 +647,35 @@ export default function App() {
                       {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => <option key={i} value={i}>{i}月</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label className="form-label">分類</label>
-                    <select value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} className="form-input">
-                      {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                    </select>
-                  </div>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label className="form-label">分類（可多選）</label>
+                    <div className="member-select">
+                      {Object.entries(CATEGORIES).map(([k, v]) => {
+                        const isSelected = form.cats.includes(k)
+                        return (
+                          <button
+                            key={k}
+                            type="button"
+                            className={`member-chip ${isSelected ? 'selected' : ''}`}
+                            style={isSelected ? { background: v.bg, borderColor: v.color, color: v.color } : {}}
+                            onClick={() => {
+                              setForm(f => {
+                                if (isSelected) {
+                                  // 取消選擇，但至少保留一個
+                                  const newCats = f.cats.filter(c => c !== k)
+                                  return { ...f, cats: newCats.length > 0 ? newCats : f.cats }
+                                } else {
+                                  return { ...f, cats: [...f.cats, k] }
+                                }
+                              })
+                            }}
+                          >
+                            {v.label}
+                          </button>
+                        )
+                      })}
+                    </div>
                 </div>
                 <label className="form-label">標題</label>
                 <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="事件標題" className="form-input" />
@@ -778,7 +817,10 @@ export default function App() {
             {modal.mode === 'view' && viewEvent && (
               <div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span className="cat-tag" style={{ background: catBg(viewEvent.cat), color: catColor(viewEvent.cat) }}>{catLabel(viewEvent.cat)}</span>
+                  {/* 顯示多個分類標籤，相容舊資料 */}
+                  {(viewEvent.cats || [viewEvent.cat]).filter(Boolean).map(c => (
+                    <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
+                  ))}
                   <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year} · {monthLabel(viewEvent.month)}</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{viewEvent.title}</h3>
