@@ -1,6 +1,6 @@
 export const AUTHORS = [
   { id: 'apollo',  name: '阿波', color: '#E63946', emoji: '🌙' },
-  { id: 'martin',  name: '馬丁', color: '#457B9D', emoji: '🎸' },
+  { id: 'martin',  name: '馬丁', color: '#457B9D', emoji: '✈️' },
   { id: 'fancy',   name: 'Fancy', color: '#D4AF37', emoji: '✨' },
   { id: 'cynical', name: '存疑', color: '#2A9D8F', emoji: '🤔' },
   { id: 'tooth',   name: '🦷寶', color: '#F4A261', emoji: '🦷' },
