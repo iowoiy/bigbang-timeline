@@ -210,6 +210,7 @@ export default function App() {
   const [confirmDel, setConfirmDel] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [imageSlider, setImageSlider] = useState({ open: false, images: [], index: 0 }) // 圖片輪播
+  const [touchStart, setTouchStart] = useState(null) // 觸控起始位置
 
   const fileInputRef = useRef(null)
 
@@ -1272,7 +1273,26 @@ export default function App() {
       {imageSlider.open && (
         <div className="image-slider-overlay" onClick={() => setImageSlider({ open: false, images: [], index: 0 })}>
           <button className="image-slider-close"><X size={24} /></button>
-          <div className="image-slider-container" onClick={e => e.stopPropagation()}>
+          <div
+            className="image-slider-container"
+            onClick={e => e.stopPropagation()}
+            onTouchStart={e => setTouchStart(e.touches[0].clientX)}
+            onTouchEnd={e => {
+              if (touchStart === null) return
+              const touchEnd = e.changedTouches[0].clientX
+              const diff = touchStart - touchEnd
+              if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                  // 向左滑 = 下一張
+                  setImageSlider(s => ({ ...s, index: (s.index + 1) % s.images.length }))
+                } else {
+                  // 向右滑 = 上一張
+                  setImageSlider(s => ({ ...s, index: (s.index - 1 + s.images.length) % s.images.length }))
+                }
+              }
+              setTouchStart(null)
+            }}
+          >
             <button
               className="image-slider-nav prev"
               onClick={() => setImageSlider(s => ({ ...s, index: (s.index - 1 + s.images.length) % s.images.length }))}
@@ -1281,7 +1301,7 @@ export default function App() {
               <ChevronLeft size={28} />
             </button>
             <div className="image-slider-main">
-              <img src={imageSlider.images[imageSlider.index]?.url} alt="" />
+              <img src={imageSlider.images[imageSlider.index]?.url} alt="" draggable={false} />
               <div className="image-slider-info">
                 <span>{imageSlider.index + 1} / {imageSlider.images.length}</span>
                 {imageSlider.images[imageSlider.index]?.author && (
