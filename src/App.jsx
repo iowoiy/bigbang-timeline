@@ -819,15 +819,14 @@ export default function App() {
                   <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn save-btn">{saving ? '儲存中...' : '💾 儲存'}</button>
                 </div>
                 {modal.mode === 'edit' && (
-                    confirmDel ? (
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: '#E63946' }}>確定？</span>
-                        <button onClick={deleteEvent} style={{ padding: '6px 12px', background: '#E63946', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>刪除</button>
-                        <button onClick={() => setConfirmDel(false)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #555', color: '#888', borderRadius: 6, fontSize: 11 }}>取消</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmDel(true)} className="del-btn">🗑 刪除事件</button>
-                    )
+                  confirmDel ? (
+                    <div className="form-actions" style={{ marginTop: 8 }}>
+                      <button onClick={() => setConfirmDel(false)} className="cancel-btn">取消刪除</button>
+                      <button onClick={deleteEvent} style={{ flex: 1, padding: '12px 16px', background: '#E63946', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600 }}>確定刪除</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDel(true)} className="del-btn" style={{ width: '100%', marginTop: 8, padding: '12px 16px', fontSize: 14 }}>🗑 刪除事件</button>
+                  )
                 )}
               </div>
             )}

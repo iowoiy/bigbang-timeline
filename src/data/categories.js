@@ -30,8 +30,9 @@ export function monthLabel(m) {
 }
 
 export function dateLabel(month, day) {
+  if (!month || month < 1 || month > 12) return '—'
   if (day && day > 0) {
     return `${month}/${day}`
   }
-  return MONTHS[month] || ''
+  return MONTHS[month] || `${month}月`
 }
