@@ -597,16 +597,19 @@ export default function App() {
       {/* Toast */}
       {toast && <div className="toast">{toast}</div>}
 
+      {/* 右上角登入資訊 */}
+      <div className="top-bar">
+        <div className="identity-bar">
+          <span className="abadge" style={badgeStyle(me)}>{authorEmoji(me)} {authorName(me)}</span>
+          {/* <button onClick={() => setMe(null)} className="switch-btn">切換</button> */}
+        </div>
+      </div>
+
       {/* Header */}
       <div className="hero">
         <div style={{ fontSize: '2rem' }}>👑</div>
         <h1 className="brand">BIGBANG</h1>
         <p style={{ color: '#888', fontSize: 13, marginTop: 6, fontStyle: 'italic' }}>影視作品共筆年表</p>
-        <div className="identity-bar">
-          <span style={{ fontSize: 12, color: '#888' }}>登入為</span>
-          <span className="abadge" style={badgeStyle(me)}>{authorEmoji(me)} {authorName(me)}</span>
-          <button onClick={() => setMe(null)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 11, textDecoration: 'underline' }}>切換</button>
-        </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 20, flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'center' }}><div className="stat-num">{events.length}</div><div className="stat-label">事件</div></div>
           <div style={{ textAlign: 'center' }}><div className="stat-num">{supplementedCount}</div><div className="stat-label">已補充</div></div>

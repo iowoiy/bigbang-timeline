@@ -151,15 +151,36 @@ a {
   letter-spacing: 0.15em;
 }
 
+/* ========== 右上角登入區 ========== */
+.top-bar {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 200;
+}
+
 .identity-bar {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
-  background: #1A1A1A;
+  padding: 6px 12px;
+  background: rgba(26, 26, 26, 0.95);
+  backdrop-filter: blur(10px);
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: 14px;
+}
+
+.switch-btn {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.switch-btn:hover {
+  color: #888;
 }
 
 /* ========== 篩選下拉選單 ========== */
