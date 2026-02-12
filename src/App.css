@@ -162,6 +162,69 @@ a {
   margin-top: 14px;
 }
 
+/* ========== 年份導航列 ========== */
+.year-nav {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(20px);
+  flex-wrap: wrap;
+}
+
+.year-nav-btn {
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: transparent;
+  color: #D4AF37;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.year-nav-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.year-nav-btn:active {
+  transform: scale(0.95);
+}
+
+/* ========== 成員篩選 ========== */
+.member-filter {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(20px);
+  flex-wrap: wrap;
+}
+
+.member-filter-btn {
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #777;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.member-filter-btn:hover {
+  border-color: var(--member-color, #D4AF37);
+  color: var(--member-color, #D4AF37);
+}
+
+.member-filter-btn.active {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+}
+
 /* ========== Filters ========== */
 .filters {
   position: sticky;
@@ -1204,5 +1267,44 @@ input[type="date"].form-input::after {
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .modal {
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ========== 回到頂部按鈕 ========== */
+.scroll-top-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.9);
+  border: none;
+  color: #0A0A0A;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+  z-index: 200;
+  animation: fadeIn 0.3s ease;
+}
+
+.scroll-top-btn:hover {
+  transform: scale(1.1);
+  background: #D4AF37;
+}
+
+.scroll-top-btn:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 600px) {
+  .scroll-top-btn {
+    bottom: 20px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
   }
 }

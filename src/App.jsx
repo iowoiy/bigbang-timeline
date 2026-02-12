@@ -167,6 +167,7 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [me, setMe] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [memberFilter, setMemberFilter] = useState('all') // 成員篩選
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState(null)
 
@@ -176,6 +177,7 @@ export default function App() {
     members: [], links: [], notes: [], media: [], editLog: []
   })
   const [expandedId, setExpandedId] = useState(null) // 展開留言的卡片 ID
+  const [showScrollTop, setShowScrollTop] = useState(false) // 回到頂部按鈕
   const [inlineNote, setInlineNote] = useState('') // 內嵌留言輸入
   const [linkUrl, setLinkUrl] = useState('')
   const [linkLabel, setLinkLabel] = useState('')
@@ -199,6 +201,15 @@ export default function App() {
       setEvents(data)
       setLoading(false)
     })
+  }, [])
+
+  // 監聽滾動顯示回到頂部按鈕
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   // 儲存資料
@@ -228,14 +239,24 @@ export default function App() {
 
   // 篩選與排序
   const filtered = useMemo(() => {
-    if (filter === 'all') return events
-    // 相容舊資料：支援 cats 陣列或 cat 字串
-    return events.filter(e => {
-      if (e.cats && e.cats.includes(filter)) return true
-      if (e.cat === filter) return true
-      return false
-    })
-  }, [events, filter])
+    let result = events
+
+    // 分類篩選
+    if (filter !== 'all') {
+      result = result.filter(e => {
+        if (e.cats && e.cats.includes(filter)) return true
+        if (e.cat === filter) return true
+        return false
+      })
+    }
+
+    // 成員篩選
+    if (memberFilter !== 'all') {
+      result = result.filter(e => e.members?.includes(memberFilter))
+    }
+
+    return result
+  }, [events, filter, memberFilter])
 
   const byYear = useMemo(() => {
     const m = {}
@@ -595,6 +616,46 @@ export default function App() {
         </div>
       </div>
 
+      {/* 年份導航列 */}
+      <div className="year-nav">
+        {years.map(year => (
+          <button
+            key={year}
+            className="year-nav-btn"
+            onClick={() => {
+              const el = document.getElementById(`year-${year}`)
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+          >
+            {year}
+          </button>
+        ))}
+      </div>
+
+      {/* 成員篩選 */}
+      <div className="member-filter">
+        <button
+          className={`member-filter-btn ${memberFilter === 'all' ? 'active' : ''}`}
+          onClick={() => setMemberFilter('all')}
+        >
+          全部
+        </button>
+        {MEMBERS.filter(m => m.name !== '全員').map(m => (
+          <button
+            key={m.name}
+            className={`member-filter-btn ${memberFilter === m.name ? 'active' : ''}`}
+            style={{
+              '--member-color': m.color,
+              borderColor: memberFilter === m.name ? m.color : undefined,
+              color: memberFilter === m.name ? m.color : undefined
+            }}
+            onClick={() => setMemberFilter(m.name)}
+          >
+            {m.name}
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="filters">
         <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
@@ -614,7 +675,7 @@ export default function App() {
       {/* Timeline */}
       <div className="timeline">
         {years.map(year => (
-          <div key={year} style={{ marginBottom: 44 }}>
+          <div key={year} id={`year-${year}`} style={{ marginBottom: 44 }}>
             <div className="year-header">
               <span className="year-num">{year}</span>
               <span style={{ fontSize: 10, color: '#555' }}>{byYear[year].length} 項</span>
@@ -1031,6 +1092,16 @@ export default function App() {
         </div>
       )}
       */}
+
+      {/* 回到頂部按鈕 */}
+      {showScrollTop && (
+        <button
+          className="scroll-top-btn"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          ↑
+        </button>
+      )}
     </div>
   )
 }
