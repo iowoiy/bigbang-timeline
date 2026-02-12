@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel } from './data/categories'
@@ -15,6 +15,55 @@ function formatTime(ts) {
   if (!ts) return ''
   const d = new Date(ts)
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// ========== 媒體工具函式 ==========
+// 上傳圖片到 ImgBB
+async function uploadToImgBB(file) {
+  const formData = new FormData()
+  formData.append('image', file)
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${config.IMGBB_API_KEY}`, {
+    method: 'POST',
+    body: formData
+  })
+  const data = await res.json()
+  if (data.success) {
+    return data.data.url
+  }
+  throw new Error('上傳失敗')
+}
+
+// 解析影片連結，回傳嵌入資訊
+function parseVideoUrl(url) {
+  if (!url) return null
+
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/)
+  if (ytMatch) {
+    return { type: 'youtube', id: ytMatch[1] }
+  }
+
+  // Instagram Reels / Post
+  const igMatch = url.match(/instagram\.com\/(?:reel|p)\/([a-zA-Z0-9_-]+)/)
+  if (igMatch) {
+    return { type: 'instagram', id: igMatch[1], url }
+  }
+
+  // X (Twitter)
+  const xMatch = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/)
+  if (xMatch) {
+    return { type: 'twitter', id: xMatch[1], url }
+  }
+
+  return null
+}
+
+// 判斷是否為圖片連結
+function isImageUrl(url) {
+  if (!url) return false
+  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) ||
+         url.includes('i.ibb.co') ||
+         url.includes('imgur.com')
 }
 
 // ========== API 函式 ==========
@@ -44,6 +93,59 @@ async function saveEvents(events) {
   if (!res.ok) throw new Error('Save failed')
 }
 
+// ========== 媒體顯示元件 ==========
+function MediaPreview({ url }) {
+  const video = parseVideoUrl(url)
+
+  // YouTube 嵌入
+  if (video?.type === 'youtube') {
+    return (
+      <div className="media-embed">
+        <iframe
+          src={`https://www.youtube.com/embed/${video.id}`}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="YouTube video"
+        />
+      </div>
+    )
+  }
+
+  // Instagram 連結（無法直接嵌入，顯示預覽卡片）
+  if (video?.type === 'instagram') {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="media-link-card">
+        <span className="media-icon">📷</span>
+        <span>Instagram 貼文</span>
+        <span className="media-arrow">→</span>
+      </a>
+    )
+  }
+
+  // X/Twitter 連結
+  if (video?.type === 'twitter') {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="media-link-card">
+        <span className="media-icon">𝕏</span>
+        <span>X (Twitter) 貼文</span>
+        <span className="media-arrow">→</span>
+      </a>
+    )
+  }
+
+  // 圖片
+  if (isImageUrl(url)) {
+    return (
+      <div className="media-image">
+        <img src={url} alt="uploaded" loading="lazy" />
+      </div>
+    )
+  }
+
+  return null
+}
+
 // ========== 主元件 ==========
 export default function App() {
   const [events, setEvents] = useState([])
@@ -57,13 +159,17 @@ export default function App() {
   // Form state
   const [form, setForm] = useState({
     id: '', year: 2025, month: 1, cat: 'music', title: '', desc: '',
-    membersStr: '', links: [], notes: [], editLog: []
+    membersStr: '', links: [], notes: [], media: [], editLog: []
   })
   const [linkUrl, setLinkUrl] = useState('')
   const [linkLabel, setLinkLabel] = useState('')
   const [noteInput, setNoteInput] = useState('')
+  const [mediaUrl, setMediaUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [showLog, setShowLog] = useState(false)
+
+  const fileInputRef = useRef(null)
 
   // Toast helper
   const flash = (msg) => {
@@ -120,7 +226,7 @@ export default function App() {
   const years = useMemo(() => Object.keys(byYear).sort((a, b) => a - b), [byYear])
 
   const supplementedCount = useMemo(() =>
-    events.filter(e => (e.links?.length || 0) + (e.notes?.length || 0) > 0).length
+    events.filter(e => (e.links?.length || 0) + (e.notes?.length || 0) + (e.media?.length || 0) > 0).length
   , [events])
 
   const yearSpan = useMemo(() => {
@@ -137,7 +243,7 @@ export default function App() {
 
   const sortedEvents = (arr) => [...arr].sort((a, b) => (a.month || 0) - (b.month || 0))
 
-  const hasExtra = (ev) => (ev.links?.length || 0) + (ev.notes?.length || 0) > 0
+  const hasExtra = (ev) => (ev.links?.length || 0) + (ev.notes?.length || 0) + (ev.media?.length || 0) > 0
   const lastEditor = (ev) => ev.editLog?.length ? ev.editLog[ev.editLog.length - 1].author : null
 
   // Modal helpers
@@ -152,13 +258,14 @@ export default function App() {
       membersStr: (ev.members || []).join(', '),
       links: JSON.parse(JSON.stringify(ev.links || [])),
       notes: JSON.parse(JSON.stringify(ev.notes || [])),
+      media: JSON.parse(JSON.stringify(ev.media || [])),
       editLog: JSON.parse(JSON.stringify(ev.editLog || []))
     })
   }
 
   const openView = (ev) => {
     setFormFromEvent(ev)
-    setLinkUrl(''); setLinkLabel(''); setNoteInput('')
+    setLinkUrl(''); setLinkLabel(''); setNoteInput(''); setMediaUrl('')
     setShowLog(false); setConfirmDel(false)
     setModal({ mode: 'view', eventId: ev.id })
   }
@@ -168,9 +275,9 @@ export default function App() {
     setForm({
       id: newId, year: 2025, month: 1, cat: 'music',
       title: '', desc: '', membersStr: '全員',
-      links: [], notes: [], editLog: []
+      links: [], notes: [], media: [], editLog: []
     })
-    setLinkUrl(''); setLinkLabel(''); setNoteInput('')
+    setLinkUrl(''); setLinkLabel(''); setNoteInput(''); setMediaUrl('')
     setModal({ mode: 'new' })
   }
 
@@ -192,6 +299,7 @@ export default function App() {
       members: form.membersStr.split(',').map(s => s.trim()).filter(Boolean),
       links: form.links,
       notes: form.notes,
+      media: form.media,
       editLog: [...form.editLog, { author: me, action: modal.mode === 'new' ? '新增' : '編輯', ts: Date.now() }]
     }
     let next
@@ -231,7 +339,7 @@ export default function App() {
     if (!u.startsWith('http')) u = 'https://' + u
     const newLinks = [...form.links, { url: u, label: linkLabel.trim() || u, author: me, ts: Date.now() }]
     setLinkUrl(''); setLinkLabel('')
-    saveSupplements(newLinks, form.notes)
+    saveSupplements({ links: newLinks })
   }
 
   // Notes
@@ -252,20 +360,83 @@ export default function App() {
     if (!noteInput.trim()) return
     const newNotes = [...form.notes, { text: noteInput.trim(), author: me, ts: Date.now() }]
     setNoteInput('')
-    saveSupplements(form.links, newNotes)
+    saveSupplements({ notes: newNotes })
   }
 
-  const saveSupplements = (links, notes) => {
+  // Media
+  const addMediaUrl = () => {
+    if (!mediaUrl.trim()) return
+    let u = mediaUrl.trim()
+    if (!u.startsWith('http')) u = 'https://' + u
+    setForm(f => ({
+      ...f,
+      media: [...f.media, { url: u, author: me, ts: Date.now() }]
+    }))
+    setMediaUrl('')
+  }
+
+  const removeMedia = (i) => {
+    setForm(f => ({ ...f, media: f.media.filter((_, idx) => idx !== i) }))
+  }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // 檢查檔案大小 (最大 32MB)
+    if (file.size > 32 * 1024 * 1024) {
+      flash('❌ 檔案太大，最大 32MB')
+      return
+    }
+
+    // 檢查檔案類型
+    if (!file.type.startsWith('image/')) {
+      flash('❌ 請選擇圖片檔案')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const url = await uploadToImgBB(file)
+      setForm(f => ({
+        ...f,
+        media: [...f.media, { url, author: me, ts: Date.now() }]
+      }))
+      flash('✅ 圖片上傳成功')
+    } catch {
+      flash('❌ 上傳失敗，請重試')
+    }
+    setUploading(false)
+    // 清空 input
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const addMediaAndSave = () => {
+    if (!mediaUrl.trim()) return
+    let u = mediaUrl.trim()
+    if (!u.startsWith('http')) u = 'https://' + u
+    const newMedia = [...form.media, { url: u, author: me, ts: Date.now() }]
+    setMediaUrl('')
+    saveSupplements({ media: newMedia })
+  }
+
+  const saveSupplements = (updates) => {
     const ev = events.find(e => e.id === modal?.eventId)
     if (!ev) return
     const updated = {
       ...ev,
-      links: links,
-      notes: notes,
+      links: updates.links || form.links,
+      notes: updates.notes || form.notes,
+      media: updates.media || form.media,
       editLog: [...(ev.editLog || []), { author: me, action: '補充', ts: Date.now() }]
     }
     persist(events.map(e => e.id === updated.id ? updated : e))
-    setForm(f => ({ ...f, links, notes }))
+    setForm(f => ({
+      ...f,
+      links: updates.links || f.links,
+      notes: updates.notes || f.notes,
+      media: updates.media || f.media
+    }))
   }
 
   // ========== 選擇身份 ==========
@@ -377,6 +548,7 @@ export default function App() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                     <span className="cat-tag" style={{ background: catBg(ev.cat), color: catColor(ev.cat) }}>{catLabel(ev.cat)}</span>
                     {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F' }}>📎 已補充</span>}
+                    {(ev.media?.length > 0) && <span style={{ fontSize: 9, color: '#D4AF37' }}>🖼️ {ev.media.length}</span>}
                     {lastEditor(ev) && (
                       <span style={{ fontSize: 9, color: '#555' }}>·
                         <span className="abadge sm" style={badgeStyle(lastEditor(ev))}>{authorEmoji(lastEditor(ev))} {authorName(lastEditor(ev))}</span>
@@ -385,6 +557,14 @@ export default function App() {
                   </div>
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.4 }}>{ev.title}</div>
                   <div style={{ fontSize: 12, color: '#777', lineHeight: 1.6 }}>{ev.desc}</div>
+
+                  {/* 媒體預覽（卡片中只顯示第一張圖） */}
+                  {ev.media?.length > 0 && isImageUrl(ev.media[0].url) && (
+                    <div className="card-thumbnail" onClick={e => e.stopPropagation()}>
+                      <img src={ev.media[0].url} alt="" />
+                    </div>
+                  )}
+
                   {ev.links && ev.links.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                       {ev.links.map((lk, i) => (
@@ -464,6 +644,49 @@ export default function App() {
 
                 <div className="divider" />
 
+                {/* Media */}
+                <label className="form-label">🖼️ 圖片 / 影片</label>
+                {form.media.map((m, i) => (
+                  <div key={i} style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
+                      <span style={{ flex: 1, fontSize: 11, color: '#D4AF37', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {isImageUrl(m.url) ? '🖼️' : '🎬'} {m.url.slice(0, 40)}...
+                      </span>
+                      {m.author && <span className="abadge sm" style={badgeStyle(m.author)}>{authorEmoji(m.author)}</span>}
+                      <button onClick={() => removeMedia(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
+                    </div>
+                    <MediaPreview url={m.url} />
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    value={mediaUrl}
+                    onChange={e => setMediaUrl(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addMediaUrl()}
+                    placeholder="貼上圖片或 YouTube / IG / X 連結"
+                    className="form-input"
+                    style={{ flex: '1 1 200px', marginBottom: 0 }}
+                  />
+                  <button onClick={addMediaUrl} className="gold-btn">+</button>
+                  <span style={{ color: '#555', fontSize: 11 }}>或</span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{ padding: '6px 12px', background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.3)', color: '#D4AF37', borderRadius: 6, fontSize: 11 }}
+                  >
+                    {uploading ? '上傳中...' : '📤 上傳圖片'}
+                  </button>
+                </div>
+
+                <div className="divider" />
+
                 {/* Links */}
                 <label className="form-label">🔗 相關連結</label>
                 {form.links.map((lk, i) => (
@@ -532,7 +755,70 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Media in view */}
+                {form.media?.length > 0 && (
+                  <>
+                    <div className="divider" style={{ marginTop: 0 }} />
+                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🖼️ 圖片 / 影片</h4>
+                    {form.media.map((m, i) => (
+                      <div key={i} style={{ marginBottom: 12 }}>
+                        <MediaPreview url={m.url} />
+                        <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
+                          {m.author && <span className="abadge sm" style={badgeStyle(m.author)}>{authorEmoji(m.author)} {authorName(m.author)}</span>}
+                          {' '}{formatTime(m.ts)}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
                 <div className="divider" style={{ marginTop: 0 }} />
+
+                {/* Add media in view */}
+                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>➕ 新增圖片 / 影片</h4>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    value={mediaUrl}
+                    onChange={e => setMediaUrl(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addMediaAndSave()}
+                    placeholder="貼上圖片或影片連結"
+                    className="form-input"
+                    style={{ flex: '1 1 180px', marginBottom: 0, fontSize: 12 }}
+                  />
+                  <button onClick={addMediaAndSave} className="gold-btn">+ 新增</button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      if (file.size > 32 * 1024 * 1024) {
+                        flash('❌ 檔案太大，最大 32MB')
+                        return
+                      }
+                      setUploading(true)
+                      try {
+                        const url = await uploadToImgBB(file)
+                        const newMedia = [...form.media, { url, author: me, ts: Date.now() }]
+                        saveSupplements({ media: newMedia })
+                        flash('✅ 圖片上傳成功')
+                      } catch {
+                        flash('❌ 上傳失敗，請重試')
+                      }
+                      setUploading(false)
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{ padding: '6px 12px', background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.3)', color: '#D4AF37', borderRadius: 6, fontSize: 11 }}
+                  >
+                    {uploading ? '上傳中...' : '📤 上傳'}
+                  </button>
+                </div>
 
                 {/* Links in view */}
                 <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🔗 相關連結</h4>
