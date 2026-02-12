@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
-import { CATEGORIES, catColor, catBg, catLabel, monthLabel } from './data/categories'
+import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
 import { DEFAULT_EVENTS } from './data/defaultEvents'
 
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.BIN_ID}`
@@ -172,7 +172,7 @@ export default function App() {
 
   // Form state
   const [form, setForm] = useState({
-    id: '', year: 2025, month: 1, cats: ['music'], title: '', desc: '',
+    id: '', year: 2025, month: 1, day: 1, cats: ['music'], title: '', desc: '',
     members: [], links: [], notes: [], media: [], editLog: []
   })
   const [linkUrl, setLinkUrl] = useState('')
@@ -261,7 +261,11 @@ export default function App() {
 
   const isEditing = modal?.mode === 'edit' || modal?.mode === 'new'
 
-  const sortedEvents = (arr) => [...arr].sort((a, b) => (a.month || 0) - (b.month || 0))
+  const sortedEvents = (arr) => [...arr].sort((a, b) => {
+    const monthDiff = (a.month || 0) - (b.month || 0)
+    if (monthDiff !== 0) return monthDiff
+    return (a.day || 0) - (b.day || 0)
+  })
 
   const hasExtra = (ev) => (ev.links?.length || 0) + (ev.notes?.length || 0) + (ev.media?.length || 0) > 0
   const lastEditor = (ev) => ev.editLog?.length ? ev.editLog[ev.editLog.length - 1].author : null
@@ -274,6 +278,7 @@ export default function App() {
       id: ev.id,
       year: ev.year,
       month: ev.month,
+      day: ev.day || 1,
       cats: cats,
       title: ev.title,
       desc: ev.desc,
@@ -294,8 +299,9 @@ export default function App() {
 
   const openNew = () => {
     const newId = genId()
+    const today = new Date()
     setForm({
-      id: newId, year: 2025, month: 1, cats: ['music'],
+      id: newId, year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate(), cats: ['music'],
       title: '', desc: '', members: ['全員'],
       links: [], notes: [], media: [], editLog: []
     })
@@ -315,6 +321,7 @@ export default function App() {
       id: form.id,
       year: parseInt(form.year) || 2025,
       month: parseInt(form.month) || 1,
+      day: parseInt(form.day) || 1,
       cats: form.cats,
       cat: form.cats[0] || 'music', // 保留 cat 欄位相容舊資料
       title: form.title,
@@ -569,7 +576,7 @@ export default function App() {
                 style={{ borderLeft: '3px solid ' + catColor(primaryCat) }}
                 onClick={() => openView(ev)}
               >
-                <div className="month-col" style={{ color: catColor(primaryCat) }}>{monthLabel(ev.month)}</div>
+                <div className="month-col" style={{ color: catColor(primaryCat) }}>{dateLabel(ev.month, ev.day)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                     {/* 顯示多個分類標籤，相容舊資料 */}
@@ -647,17 +654,17 @@ export default function App() {
             {/* Edit / New Form */}
             {isEditing && (
               <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                  <div>
-                    <label className="form-label">年份</label>
-                    <input type="number" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} className="form-input" />
-                  </div>
-                  <div>
-                    <label className="form-label">月份</label>
-                    <select value={form.month} onChange={e => setForm(f => ({ ...f, month: e.target.value }))} className="form-input">
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => <option key={i} value={i}>{i}月</option>)}
-                    </select>
-                  </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label className="form-label">日期</label>
+                  <input
+                    type="date"
+                    value={`${form.year}-${String(form.month).padStart(2, '0')}-${String(form.day || 1).padStart(2, '0')}`}
+                    onChange={e => {
+                      const [y, m, d] = e.target.value.split('-').map(Number)
+                      setForm(f => ({ ...f, year: y, month: m, day: d }))
+                    }}
+                    className="form-input"
+                  />
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <label className="form-label">分類（可多選）</label>
@@ -833,7 +840,7 @@ export default function App() {
                   {(viewEvent.cats || [viewEvent.cat]).filter(Boolean).map(c => (
                     <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
                   ))}
-                  <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year} · {monthLabel(viewEvent.month)}</span>
+                  <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year}/{viewEvent.month}{viewEvent.day ? `/${viewEvent.day}` : ''}</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{viewEvent.title}</h3>
                 <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 4 }}>{viewEvent.desc}</p>

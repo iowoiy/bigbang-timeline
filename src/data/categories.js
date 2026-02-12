@@ -28,3 +28,10 @@ export function catLabel(cat) {
 export function monthLabel(m) {
   return MONTHS[m] || ''
 }
+
+export function dateLabel(month, day) {
+  if (day && day > 0) {
+    return `${month}/${day}`
+  }
+  return MONTHS[month] || ''
+}
