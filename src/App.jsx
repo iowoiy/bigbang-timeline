@@ -672,6 +672,7 @@ export default function App() {
                         ))}
                       </div>
                     )}
+                    {/* 事件卡留言預覽 - 暫時隱藏
                     {ev.notes && ev.notes.length > 0 && (
                       <div style={{ marginTop: 5, fontSize: 11, color: '#999', fontStyle: 'italic', borderLeft: '2px solid rgba(212,175,55,0.2)', paddingLeft: 8 }}>
                         💬 {ev.notes[ev.notes.length - 1].text} —
@@ -680,6 +681,7 @@ export default function App() {
                         </span>
                       </div>
                     )}
+                    */}
                     {ev.members && ev.members.length > 0 && (
                       <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         {ev.members.map(m => <span key={m} className="member-tag" style={{ borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
