@@ -8,30 +8,22 @@ const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.BIN_ID}`
 
 // ========== 工具函式 ==========
 function genId() {
-  return Date.now() + Math.random().toString(36).slice(2, 9)
+  return 'e-' + Date.now()
 }
 
-function fanSinceYear(authorId) {
-  for (const [year, ids] of Object.entries(FAN_SINCE)) {
-    if (ids.includes(authorId)) return year
-  }
-  return null
-}
-
-function formatDate(y, m, d) {
-  if (!m) return `${y} 年`
-  if (!d) return `${y} 年 ${monthLabel(m)}`
-  return `${y} 年 ${m} 月 ${d} 日`
+function formatTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 // ========== API 函式 ==========
 async function loadEvents() {
   try {
-    const res = await fetch(JSONBIN_URL, {
-      headers: { 'X-Master-Key': config.API_KEY }
+    const res = await fetch(`${JSONBIN_URL}/latest`, {
+      headers: { 'X-Master-Key': config.API_KEY, 'X-Bin-Meta': 'false' }
     })
-    const json = await res.json()
-    const data = json.record
+    const data = await res.json()
     if (Array.isArray(data) && data.length > 0) return data
     return DEFAULT_EVENTS
   } catch (e) {
@@ -41,20 +33,15 @@ async function loadEvents() {
 }
 
 async function saveEvents(events) {
-  try {
-    await fetch(JSONBIN_URL, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': config.API_KEY
-      },
-      body: JSON.stringify(events)
-    })
-    return true
-  } catch (e) {
-    console.error('儲存失敗', e)
-    return false
-  }
+  const res = await fetch(JSONBIN_URL, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': config.API_KEY
+    },
+    body: JSON.stringify(events)
+  })
+  if (!res.ok) throw new Error('Save failed')
 }
 
 // ========== 主元件 ==========
@@ -62,11 +49,27 @@ export default function App() {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [currentUser, setCurrentUser] = useState(null)
+  const [me, setMe] = useState(null)
   const [filter, setFilter] = useState('all')
-  const [editingEvent, setEditingEvent] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [expandedId, setExpandedId] = useState(null)
+  const [modal, setModal] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // Form state
+  const [form, setForm] = useState({
+    id: '', year: 2025, month: 1, cat: 'music', title: '', desc: '',
+    membersStr: '', links: [], notes: [], editLog: []
+  })
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkLabel, setLinkLabel] = useState('')
+  const [noteInput, setNoteInput] = useState('')
+  const [confirmDel, setConfirmDel] = useState(false)
+  const [showLog, setShowLog] = useState(false)
+
+  // Toast helper
+  const flash = (msg) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2500)
+  }
 
   // 載入資料
   useEffect(() => {
@@ -77,354 +80,530 @@ export default function App() {
   }, [])
 
   // 儲存資料
-  const doSave = async (newEvents) => {
-    setEvents(newEvents)
+  const persist = async (newEvents) => {
     setSaving(true)
-    await saveEvents(newEvents)
+    try {
+      await saveEvents(newEvents)
+      setEvents(newEvents)
+      flash('✅ 已儲存（所有人可見）')
+    } catch {
+      flash('❌ 儲存失敗，請稍後重試')
+    }
     setSaving(false)
   }
 
-  // 篩選與排序
-  const filteredEvents = useMemo(() => {
-    let list = [...events]
-    if (filter !== 'all') {
-      list = list.filter(e => e.category === filter)
+  const refresh = async () => {
+    try {
+      const data = await loadEvents()
+      if (Array.isArray(data)) {
+        setEvents(data)
+        flash('🔄 已同步最新')
+      }
+    } catch {
+      flash('載入失敗')
     }
-    list.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year
-      if ((a.month || 0) !== (b.month || 0)) return (a.month || 0) - (b.month || 0)
-      return (a.day || 0) - (b.day || 0)
-    })
-    return list
+  }
+
+  // 篩選與排序
+  const filtered = useMemo(() => {
+    return filter === 'all' ? events : events.filter(e => e.cat === filter)
   }, [events, filter])
 
-  // 新增/編輯事件
-  const handleSaveEvent = (eventData) => {
-    let newEvents
-    if (editingEvent) {
-      newEvents = events.map(e => e.id === editingEvent.id ? { ...eventData, id: e.id } : e)
-    } else {
-      newEvents = [...events, { ...eventData, id: genId() }]
+  const byYear = useMemo(() => {
+    const m = {}
+    filtered.forEach(e => {
+      (m[e.year] ??= []).push(e)
+    })
+    return m
+  }, [filtered])
+
+  const years = useMemo(() => Object.keys(byYear).sort((a, b) => a - b), [byYear])
+
+  const supplementedCount = useMemo(() =>
+    events.filter(e => (e.links?.length || 0) + (e.notes?.length || 0) > 0).length
+  , [events])
+
+  const yearSpan = useMemo(() => {
+    if (!events.length) return 0
+    const yrs = events.map(e => e.year)
+    return Math.max(...yrs) - Math.min(...yrs) + 1
+  }, [events])
+
+  const viewEvent = useMemo(() =>
+    modal?.eventId ? events.find(e => e.id === modal.eventId) : null
+  , [modal, events])
+
+  const isEditing = modal?.mode === 'edit' || modal?.mode === 'new'
+
+  const sortedEvents = (arr) => [...arr].sort((a, b) => (a.month || 0) - (b.month || 0))
+
+  const hasExtra = (ev) => (ev.links?.length || 0) + (ev.notes?.length || 0) > 0
+  const lastEditor = (ev) => ev.editLog?.length ? ev.editLog[ev.editLog.length - 1].author : null
+
+  // Modal helpers
+  const setFormFromEvent = (ev) => {
+    setForm({
+      id: ev.id,
+      year: ev.year,
+      month: ev.month,
+      cat: ev.cat,
+      title: ev.title,
+      desc: ev.desc,
+      membersStr: (ev.members || []).join(', '),
+      links: JSON.parse(JSON.stringify(ev.links || [])),
+      notes: JSON.parse(JSON.stringify(ev.notes || [])),
+      editLog: JSON.parse(JSON.stringify(ev.editLog || []))
+    })
+  }
+
+  const openView = (ev) => {
+    setFormFromEvent(ev)
+    setLinkUrl(''); setLinkLabel(''); setNoteInput('')
+    setShowLog(false); setConfirmDel(false)
+    setModal({ mode: 'view', eventId: ev.id })
+  }
+
+  const openNew = () => {
+    const newId = genId()
+    setForm({
+      id: newId, year: 2025, month: 1, cat: 'music',
+      title: '', desc: '', membersStr: '全員',
+      links: [], notes: [], editLog: []
+    })
+    setLinkUrl(''); setLinkLabel(''); setNoteInput('')
+    setModal({ mode: 'new' })
+  }
+
+  const closeModal = () => {
+    setModal(null)
+    setConfirmDel(false)
+    setShowLog(false)
+  }
+
+  // Save event
+  const saveEvent = () => {
+    const parsed = {
+      id: form.id,
+      year: parseInt(form.year) || 2025,
+      month: parseInt(form.month) || 1,
+      cat: form.cat,
+      title: form.title,
+      desc: form.desc,
+      members: form.membersStr.split(',').map(s => s.trim()).filter(Boolean),
+      links: form.links,
+      notes: form.notes,
+      editLog: [...form.editLog, { author: me, action: modal.mode === 'new' ? '新增' : '編輯', ts: Date.now() }]
     }
-    doSave(newEvents)
-    setShowForm(false)
-    setEditingEvent(null)
+    let next
+    if (modal.mode === 'new') {
+      next = [...events, parsed]
+    } else {
+      next = events.map(e => e.id === parsed.id ? parsed : e)
+    }
+    persist(next)
+    closeModal()
   }
 
-  // 刪除事件
-  const handleDelete = (id) => {
-    if (!confirm('確定要刪除這個事件嗎？')) return
-    doSave(events.filter(e => e.id !== id))
+  const deleteEvent = () => {
+    persist(events.filter(e => e.id !== form.id))
+    closeModal()
   }
 
-  // 新增連結
-  const handleAddLink = (eventId, url, label) => {
-    const newEvents = events.map(e => {
-      if (e.id !== eventId) return e
-      return {
-        ...e,
-        links: [...(e.links || []), { url, label, author: currentUser, ts: Date.now() }]
-      }
-    })
-    doSave(newEvents)
+  // Links
+  const addLink = () => {
+    if (!linkUrl.trim()) return
+    let u = linkUrl.trim()
+    if (!u.startsWith('http')) u = 'https://' + u
+    setForm(f => ({
+      ...f,
+      links: [...f.links, { url: u, label: linkLabel.trim() || u, author: me, ts: Date.now() }]
+    }))
+    setLinkUrl(''); setLinkLabel('')
   }
 
-  // 新增筆記
-  const handleAddNote = (eventId, text) => {
-    const newEvents = events.map(e => {
-      if (e.id !== eventId) return e
-      return {
-        ...e,
-        notes: [...(e.notes || []), { text, author: currentUser, ts: Date.now() }]
-      }
-    })
-    doSave(newEvents)
+  const removeLink = (i) => {
+    setForm(f => ({ ...f, links: f.links.filter((_, idx) => idx !== i) }))
+  }
+
+  const addLinkAndSave = () => {
+    if (!linkUrl.trim()) return
+    let u = linkUrl.trim()
+    if (!u.startsWith('http')) u = 'https://' + u
+    const newLinks = [...form.links, { url: u, label: linkLabel.trim() || u, author: me, ts: Date.now() }]
+    setLinkUrl(''); setLinkLabel('')
+    saveSupplements(newLinks, form.notes)
+  }
+
+  // Notes
+  const addNote = () => {
+    if (!noteInput.trim()) return
+    setForm(f => ({
+      ...f,
+      notes: [...f.notes, { text: noteInput.trim(), author: me, ts: Date.now() }]
+    }))
+    setNoteInput('')
+  }
+
+  const removeNote = (i) => {
+    setForm(f => ({ ...f, notes: f.notes.filter((_, idx) => idx !== i) }))
+  }
+
+  const addNoteAndSave = () => {
+    if (!noteInput.trim()) return
+    const newNotes = [...form.notes, { text: noteInput.trim(), author: me, ts: Date.now() }]
+    setNoteInput('')
+    saveSupplements(form.links, newNotes)
+  }
+
+  const saveSupplements = (links, notes) => {
+    const ev = events.find(e => e.id === modal?.eventId)
+    if (!ev) return
+    const updated = {
+      ...ev,
+      links: links,
+      notes: notes,
+      editLog: [...(ev.editLog || []), { author: me, action: '補充', ts: Date.now() }]
+    }
+    persist(events.map(e => e.id === updated.id ? updated : e))
+    setForm(f => ({ ...f, links, notes }))
   }
 
   // ========== 選擇身份 ==========
-  if (!currentUser) {
+  if (!me) {
     return (
-      <div className="app">
-        <header className="header">
-          <h1>BIGBANG 共筆年表</h1>
-          <p className="subtitle">選擇你的身份</p>
-        </header>
-        <div className="author-select">
-          {AUTHORS.map(a => (
-            <button
-              key={a.id}
-              className="author-btn"
-              style={{ '--author-color': a.color }}
-              onClick={() => setCurrentUser(a.id)}
-            >
-              <span className="author-emoji">{a.emoji}</span>
-              <span className="author-name">{a.name}</span>
-              <span className="fan-since">入坑 {fanSinceYear(a.id)}</span>
-            </button>
-          ))}
+      <div className="author-screen">
+        <div style={{ textAlign: 'center', padding: 40, maxWidth: 460 }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>👑</div>
+          <h1 className="brand">BIGBANG</h1>
+          <p style={{ color: '#888', fontSize: 14, marginTop: 8, fontStyle: 'italic' }}>共筆年表 — 請選擇你的身份</p>
+          <div className="author-grid">
+            {AUTHORS.map(a => (
+              <button
+                key={a.id}
+                className="author-btn"
+                style={{ borderColor: a.color + '33' }}
+                onClick={() => setMe(a.id)}
+              >
+                <span style={{ fontSize: '1.8rem' }}>{a.emoji}</span>
+                <span style={{ fontSize: 15, fontWeight: 600, color: a.color }}>{a.name}</span>
+              </button>
+            ))}
+          </div>
+          <p style={{ color: '#555', fontSize: 11, marginTop: 24 }}>選擇後即可開始編輯，你的操作都會記錄署名</p>
         </div>
       </div>
     )
   }
 
+  // ========== Loading ==========
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="brand" style={{ fontSize: '3rem', letterSpacing: '0.3em' }}>BIGBANG</div>
+        <div style={{ color: '#888', marginTop: 12, fontSize: 14 }}>載入中...</div>
+      </div>
+    )
+  }
+
   // ========== 主介面 ==========
-  const user = findAuthor(currentUser)
-
   return (
-    <div className="app">
-      <header className="header">
-        <h1>BIGBANG 共筆年表</h1>
-        <div className="user-bar">
-          <span className="current-user" style={badgeStyle(currentUser)}>
-            {user.emoji} {user.name}
-          </span>
-          <button className="btn-small" onClick={() => setCurrentUser(null)}>切換身份</button>
-          {saving && <span className="saving">儲存中...</span>}
-        </div>
-      </header>
+    <div>
+      {/* Toast */}
+      {toast && <div className="toast">{toast}</div>}
 
-      {/* 篩選列 */}
-      <div className="filter-bar">
-        <button
-          className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-          onClick={() => setFilter('all')}
-        >
-          全部
+      {/* Header */}
+      <div className="hero">
+        <div style={{ fontSize: '2rem' }}>👑</div>
+        <h1 className="brand">BIGBANG</h1>
+        <p style={{ color: '#888', fontSize: 13, marginTop: 6, fontStyle: 'italic' }}>影視作品共筆年表</p>
+        <div className="identity-bar">
+          <span style={{ fontSize: 12, color: '#888' }}>登入為</span>
+          <span className="abadge" style={badgeStyle(me)}>{authorEmoji(me)} {authorName(me)}</span>
+          <button onClick={() => setMe(null)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 11, textDecoration: 'underline' }}>切換</button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 20, flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'center' }}><div className="stat-num">{events.length}</div><div className="stat-label">事件</div></div>
+          <div style={{ textAlign: 'center' }}><div className="stat-num">{supplementedCount}</div><div className="stat-label">已補充</div></div>
+          <div style={{ textAlign: 'center' }}><div className="stat-num">{yearSpan}</div><div className="stat-label">年</div></div>
+        </div>
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={refresh} style={{ padding: '6px 16px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', color: '#D4AF37', borderRadius: 20, fontSize: 11 }}>🔄 同步</button>
+          <button onClick={openNew} style={{ padding: '6px 16px', background: '#D4AF37', border: 'none', color: '#0A0A0A', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>＋ 新增事件</button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="filters">
+        <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+          全部 <span style={{ opacity: 0.6, fontSize: 10 }}>{events.length}</span>
         </button>
         {Object.entries(CATEGORIES).map(([key, cat]) => (
           <button
             key={key}
             className={`filter-btn ${filter === key ? 'active' : ''}`}
-            style={{ '--cat-color': cat.color }}
             onClick={() => setFilter(key)}
           >
-            {cat.label}
+            {cat.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{events.filter(e => e.cat === key).length}</span>
           </button>
         ))}
       </div>
 
-      {/* 新增按鈕 */}
-      <div className="action-bar">
-        <button className="btn-primary" onClick={() => { setEditingEvent(null); setShowForm(true) }}>
-          + 新增事件
-        </button>
+      {/* Timeline */}
+      <div className="timeline">
+        {years.map(year => (
+          <div key={year} style={{ marginBottom: 44 }}>
+            <div className="year-header">
+              <span className="year-num">{year}</span>
+              <span style={{ fontSize: 10, color: '#555' }}>{byYear[year].length} 項</span>
+              {(FAN_SINCE[year] || []).map(aid => (
+                <span
+                  key={aid}
+                  className="fan-badge"
+                  style={{ background: authorColor(aid) + '18', color: authorColor(aid), border: '1px solid ' + authorColor(aid) + '30' }}
+                >
+                  {authorEmoji(aid)} {authorName(aid)} 入坑
+                </span>
+              ))}
+            </div>
+            {sortedEvents(byYear[year]).map(ev => (
+              <div
+                key={ev.id}
+                className="event-card"
+                style={{ borderLeft: '3px solid ' + catColor(ev.cat) }}
+                onClick={() => openView(ev)}
+              >
+                <div className="month-col" style={{ color: catColor(ev.cat) }}>{monthLabel(ev.month)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <span className="cat-tag" style={{ background: catBg(ev.cat), color: catColor(ev.cat) }}>{catLabel(ev.cat)}</span>
+                    {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F' }}>📎 已補充</span>}
+                    {lastEditor(ev) && (
+                      <span style={{ fontSize: 9, color: '#555' }}>·
+                        <span className="abadge sm" style={badgeStyle(lastEditor(ev))}>{authorEmoji(lastEditor(ev))} {authorName(lastEditor(ev))}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.4 }}>{ev.title}</div>
+                  <div style={{ fontSize: 12, color: '#777', lineHeight: 1.6 }}>{ev.desc}</div>
+                  {ev.links && ev.links.length > 0 && (
+                    <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      {ev.links.map((lk, i) => (
+                        <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="link-tag" onClick={e => e.stopPropagation()}>
+                          🔗 {lk.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {ev.notes && ev.notes.length > 0 && (
+                    <div style={{ marginTop: 5, fontSize: 11, color: '#999', fontStyle: 'italic', borderLeft: '2px solid rgba(212,175,55,0.2)', paddingLeft: 8 }}>
+                      💬 {ev.notes[ev.notes.length - 1].text} —
+                      <span className="abadge sm" style={badgeStyle(ev.notes[ev.notes.length - 1].author)}>
+                        {authorEmoji(ev.notes[ev.notes.length - 1].author)} {authorName(ev.notes[ev.notes.length - 1].author)}
+                      </span>
+                    </div>
+                  )}
+                  {ev.members && ev.members.length > 0 && (
+                    <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {ev.members.map(m => <span key={m} className="member-tag">{m}</span>)}
+                    </div>
+                  )}
+                </div>
+                <div style={{ flexShrink: 0, alignSelf: 'center', fontSize: 12, color: '#444' }}>✏️</div>
+              </div>
+            ))}
+          </div>
+        ))}
+        {filtered.length === 0 && <div className="empty-state">此分類暫無資料</div>}
       </div>
 
-      {/* 事件表單 */}
-      {showForm && (
-        <EventForm
-          event={editingEvent}
-          onSave={handleSaveEvent}
-          onCancel={() => { setShowForm(false); setEditingEvent(null) }}
-        />
-      )}
+      {/* Footer */}
+      <div className="footer">
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: '0.3em', color: 'rgba(212,175,55,0.25)' }}>BIGBANG · V.I.P</div>
+        <p style={{ fontSize: 10, color: '#444', marginTop: 6 }}>共筆年表 · Since 2006</p>
+      </div>
 
-      {/* 時間軸 */}
-      {loading ? (
-        <div className="loading">載入中...</div>
-      ) : (
-        <div className="timeline">
-          {filteredEvents.map(event => (
-            <EventCard
-              key={event.id}
-              event={event}
-              expanded={expandedId === event.id}
-              onToggle={() => setExpandedId(expandedId === event.id ? null : event.id)}
-              onEdit={() => { setEditingEvent(event); setShowForm(true) }}
-              onDelete={() => handleDelete(event.id)}
-              onAddLink={handleAddLink}
-              onAddNote={handleAddNote}
-              currentUser={currentUser}
-            />
-          ))}
+      {/* Modal */}
+      {modal && (
+        <div className="overlay" onClick={(e) => e.target === e.currentTarget && closeModal()}>
+          <div className="modal">
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#D4AF37' }}>
+                {modal.mode === 'new' ? '＋ 新增事件' : modal.mode === 'edit' ? '✏️ 編輯事件' : '📋 事件詳情'}
+              </div>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Edit / New Form */}
+            {isEditing && (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+                  <div>
+                    <label className="form-label">年份</label>
+                    <input type="number" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} className="form-input" />
+                  </div>
+                  <div>
+                    <label className="form-label">月份</label>
+                    <select value={form.month} onChange={e => setForm(f => ({ ...f, month: e.target.value }))} className="form-input">
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => <option key={i} value={i}>{i}月</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">分類</label>
+                    <select value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} className="form-input">
+                      {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <label className="form-label">標題</label>
+                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="事件標題" className="form-input" />
+                <label className="form-label">描述</label>
+                <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="事件描述" rows={3} className="form-input" />
+                <label className="form-label">成員（逗號分隔）</label>
+                <input value={form.membersStr} onChange={e => setForm(f => ({ ...f, membersStr: e.target.value }))} placeholder="G-Dragon, T.O.P, 太陽, 大聲, 勝利" className="form-input" />
+
+                <div className="divider" />
+
+                {/* Links */}
+                <label className="form-label">🔗 相關連結</label>
+                {form.links.map((lk, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
+                    <span style={{ flex: 1, fontSize: 11, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🔗 {lk.label}</span>
+                    {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)} {authorName(lk.author)}</span>}
+                    <button onClick={() => removeLink(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                  <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱" className="form-input" style={{ flex: '1 1 100px', marginBottom: 0 }} />
+                  <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLink()} placeholder="網址" className="form-input" style={{ flex: '2 1 150px', marginBottom: 0 }} />
+                  <button onClick={addLink} className="gold-btn">+</button>
+                </div>
+
+                <div className="divider" />
+
+                {/* Notes */}
+                <label className="form-label">💬 備註留言</label>
+                {form.notes.map((n, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
+                    <span style={{ flex: 1, fontSize: 11, color: '#aaa' }}>{n.text}</span>
+                    {n.author && <span className="abadge sm" style={badgeStyle(n.author)}>{authorEmoji(n.author)} {authorName(n.author)}</span>}
+                    <button onClick={() => removeNote(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                  <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNote()} placeholder="寫點什麼..." className="form-input" style={{ flex: 1, marginBottom: 0 }} />
+                  <button onClick={addNote} className="gold-btn">+</button>
+                </div>
+
+                <div className="divider" />
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn" style={{ padding: '8px 24px' }}>{saving ? '儲存中...' : '💾 儲存'}</button>
+                    <button onClick={closeModal} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#888', borderRadius: 8, fontSize: 12 }}>取消</button>
+                  </div>
+                  {modal.mode === 'edit' && (
+                    confirmDel ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: '#E63946' }}>確定？</span>
+                        <button onClick={deleteEvent} style={{ padding: '6px 12px', background: '#E63946', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>刪除</button>
+                        <button onClick={() => setConfirmDel(false)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #555', color: '#888', borderRadius: 6, fontSize: 11 }}>取消</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDel(true)} className="del-btn">🗑 刪除事件</button>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* View Mode */}
+            {modal.mode === 'view' && viewEvent && (
+              <div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+                  <span className="cat-tag" style={{ background: catBg(viewEvent.cat), color: catColor(viewEvent.cat) }}>{catLabel(viewEvent.cat)}</span>
+                  <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year} · {monthLabel(viewEvent.month)}</span>
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{viewEvent.title}</h3>
+                <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 4 }}>{viewEvent.desc}</p>
+                {viewEvent.members?.length > 0 && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {viewEvent.members.map(m => <span key={m} className="member-tag" style={{ fontSize: 10, padding: '2px 7px' }}>{m}</span>)}
+                  </div>
+                )}
+
+                <div className="divider" style={{ marginTop: 0 }} />
+
+                {/* Links in view */}
+                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🔗 相關連結</h4>
+                {form.links?.length > 0 ? (
+                  form.links.map((lk, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
+                      <a href={lk.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, fontSize: 12, color: '#2A9D8F', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🔗 {lk.label}</a>
+                      {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)} {authorName(lk.author)}</span>}
+                      <button onClick={() => removeLink(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>尚無連結</p>
+                )}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+                  <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱" className="form-input" style={{ flex: '1 1 80px', marginBottom: 0, fontSize: 12 }} />
+                  <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLinkAndSave()} placeholder="網址 https://..." className="form-input" style={{ flex: '2 1 140px', marginBottom: 0, fontSize: 12 }} />
+                  <button onClick={addLinkAndSave} className="gold-btn">+ 新增</button>
+                </div>
+
+                {/* Notes in view */}
+                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>💬 備註留言</h4>
+                {form.notes?.length > 0 ? (
+                  form.notes.map((n, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 12, color: '#bbb' }}>{n.text}</span>
+                        <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>
+                          {n.author && <span className="abadge sm" style={badgeStyle(n.author)}>{authorEmoji(n.author)} {authorName(n.author)}</span>}
+                          {' '}{formatTime(n.ts)}
+                        </div>
+                      </div>
+                      <button onClick={() => removeNote(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>尚無備註</p>
+                )}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                  <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNoteAndSave()} placeholder="寫點什麼..." className="form-input" style={{ flex: 1, marginBottom: 0, fontSize: 12 }} />
+                  <button onClick={addNoteAndSave} className="gold-btn">+ 留言</button>
+                </div>
+
+                <div className="divider" />
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button onClick={() => setModal(m => ({ ...m, mode: 'edit' }))} className="gold-btn" style={{ padding: '8px 20px', fontSize: 12 }}>✏️ 編輯事件內容</button>
+                  <button onClick={() => setShowLog(!showLog)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 11, textDecoration: 'underline' }}>{showLog ? '收起' : '📜 編輯紀錄'}</button>
+                </div>
+
+                {showLog && (
+                  <div style={{ marginTop: 12, padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>編輯紀錄（最新在前）</div>
+                    {viewEvent.editLog?.length > 0 ? (
+                      [...viewEvent.editLog].reverse().map((log, i) => (
+                        <div key={i} style={{ fontSize: 11, color: '#777', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span className="abadge sm" style={badgeStyle(log.author)}>{authorEmoji(log.author)} {authorName(log.author)}</span>
+                          <span>{log.action}</span>
+                          <span style={{ color: '#444' }}>{formatTime(log.ts)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: 11, color: '#444' }}>尚無紀錄</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
-
-      <footer className="footer">
-        <p>共 {events.length} 筆事件 · 由 6 位 VIP 共同維護</p>
-      </footer>
-    </div>
-  )
-}
-
-// ========== 事件卡片 ==========
-function EventCard({ event, expanded, onToggle, onEdit, onDelete, onAddLink, onAddNote, currentUser }) {
-  const [linkUrl, setLinkUrl] = useState('')
-  const [linkLabel, setLinkLabel] = useState('')
-  const [noteText, setNoteText] = useState('')
-
-  const handleSubmitLink = (e) => {
-    e.preventDefault()
-    if (!linkUrl.trim()) return
-    onAddLink(event.id, linkUrl.trim(), linkLabel.trim() || linkUrl.trim())
-    setLinkUrl('')
-    setLinkLabel('')
-  }
-
-  const handleSubmitNote = (e) => {
-    e.preventDefault()
-    if (!noteText.trim()) return
-    onAddNote(event.id, noteText.trim())
-    setNoteText('')
-  }
-
-  return (
-    <div
-      className="event-card"
-      style={{ '--cat-color': catColor(event.category), '--cat-bg': catBg(event.category) }}
-    >
-      <div className="event-header" onClick={onToggle}>
-        <span className="event-date">{formatDate(event.year, event.month, event.day)}</span>
-        <span className="event-category">{catLabel(event.category)}</span>
-      </div>
-      <h3 className="event-title" onClick={onToggle}>{event.title}</h3>
-      {event.desc && <p className="event-desc">{event.desc}</p>}
-
-      {expanded && (
-        <div className="event-details">
-          {/* 連結列表 */}
-          <div className="links-section">
-            <h4>連結</h4>
-            {(event.links || []).length === 0 && <p className="empty">尚無連結</p>}
-            <ul>
-              {(event.links || []).map((link, i) => (
-                <li key={i}>
-                  <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
-                  <span className="by" style={badgeStyle(link.author)}>
-                    {authorEmoji(link.author)} {authorName(link.author)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <form className="add-form" onSubmit={handleSubmitLink}>
-              <input
-                type="url"
-                placeholder="https://..."
-                value={linkUrl}
-                onChange={e => setLinkUrl(e.target.value)}
-              />
-              <input
-                type="text"
-                placeholder="標題（選填）"
-                value={linkLabel}
-                onChange={e => setLinkLabel(e.target.value)}
-              />
-              <button type="submit">新增連結</button>
-            </form>
-          </div>
-
-          {/* 筆記列表 */}
-          <div className="notes-section">
-            <h4>筆記</h4>
-            {(event.notes || []).length === 0 && <p className="empty">尚無筆記</p>}
-            <ul>
-              {(event.notes || []).map((note, i) => (
-                <li key={i}>
-                  <p>{note.text}</p>
-                  <span className="by" style={badgeStyle(note.author)}>
-                    {authorEmoji(note.author)} {authorName(note.author)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <form className="add-form" onSubmit={handleSubmitNote}>
-              <input
-                type="text"
-                placeholder="寫點什麼..."
-                value={noteText}
-                onChange={e => setNoteText(e.target.value)}
-              />
-              <button type="submit">新增筆記</button>
-            </form>
-          </div>
-
-          {/* 操作按鈕 */}
-          <div className="event-actions">
-            <button className="btn-edit" onClick={onEdit}>編輯</button>
-            <button className="btn-delete" onClick={onDelete}>刪除</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ========== 事件表單 ==========
-function EventForm({ event, onSave, onCancel }) {
-  const [year, setYear] = useState(event?.year || 2006)
-  const [month, setMonth] = useState(event?.month || '')
-  const [day, setDay] = useState(event?.day || '')
-  const [category, setCategory] = useState(event?.category || 'milestone')
-  const [title, setTitle] = useState(event?.title || '')
-  const [desc, setDesc] = useState(event?.desc || '')
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!title.trim()) return alert('請輸入標題')
-    onSave({
-      year: parseInt(year),
-      month: month ? parseInt(month) : null,
-      day: day ? parseInt(day) : null,
-      category,
-      title: title.trim(),
-      desc: desc.trim(),
-      links: event?.links || [],
-      notes: event?.notes || []
-    })
-  }
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <h2>{event ? '編輯事件' : '新增事件'}</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-row">
-            <label>
-              年份 *
-              <input type="number" min="1990" max="2030" value={year} onChange={e => setYear(e.target.value)} required />
-            </label>
-            <label>
-              月份
-              <select value={month} onChange={e => setMonth(e.target.value)}>
-                <option value="">不指定</option>
-                {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                  <option key={m} value={m}>{m} 月</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              日期
-              <input type="number" min="1" max="31" value={day} onChange={e => setDay(e.target.value)} />
-            </label>
-          </div>
-          <div className="form-row">
-            <label>
-              分類 *
-              <select value={category} onChange={e => setCategory(e.target.value)} required>
-                {Object.entries(CATEGORIES).map(([key, cat]) => (
-                  <option key={key} value={key}>{cat.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="form-row">
-            <label>
-              標題 *
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} required />
-            </label>
-          </div>
-          <div className="form-row">
-            <label>
-              描述
-              <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} />
-            </label>
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn-cancel" onClick={onCancel}>取消</button>
-            <button type="submit" className="btn-primary">儲存</button>
-          </div>
-        </form>
-      </div>
     </div>
   )
 }
