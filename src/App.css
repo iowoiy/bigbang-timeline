@@ -1210,6 +1210,10 @@ input[type="date"].form-input::after {
   }
 
   .modal {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     max-width: 100%;
     max-height: 80vh;
     border-radius: 16px 16px 0 0;
