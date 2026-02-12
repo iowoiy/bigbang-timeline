@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
@@ -130,7 +131,7 @@ function MediaPreview({ url }) {
   if (video?.type === 'instagram') {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className="media-link-card">
-        <span className="media-icon">📷</span>
+        <span className="media-icon"><Camera size={16} /></span>
         <span>Instagram 貼文</span>
         <span className="media-arrow">→</span>
       </a>
@@ -245,7 +246,7 @@ export default function App() {
       const data = await loadEvents()
       if (Array.isArray(data)) {
         setEvents(data)
-        flash('🔄 已同步最新')
+        flash('✅ 已同步最新')
       }
     } catch {
       flash('載入失敗')
@@ -606,7 +607,7 @@ export default function App() {
       editLog: [...(ev.editLog || []), { author: me, action: '刪除留言', ts: Date.now() }]
     }
     persist(events.map(e => e.id === updated.id ? updated : e))
-    flash('🗑 留言已刪除')
+    flash('已刪除留言')
   }
 
   // ========== 選擇身份 ==========
@@ -656,10 +657,10 @@ export default function App() {
       <div className="top-bar">
         <div className="top-bar-left">
           <span className="top-bar-logo">BIGBANG</span>
-          <button onClick={refresh} className="sync-btn" title="同步">🔄</button>
+          <button onClick={refresh} className="sync-btn" title="同步"><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
-          <button onClick={openNew} className="add-btn">＋</button>
+          <button onClick={openNew} className="add-btn"><Plus size={20} /></button>
         </div>
       </div>
 
@@ -798,8 +799,8 @@ export default function App() {
                       {(ev.cats || [ev.cat]).filter(Boolean).map(c => (
                         <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
                       ))}
-                      {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F' }}>📎 已補充</span>}
-                      {(ev.media?.length > 0) && <span style={{ fontSize: 9, color: '#D4AF37' }}>🖼️ {ev.media.length}</span>}
+                      {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Paperclip size={9} />已補充</span>}
+                      {(ev.media?.length > 0) && <span style={{ fontSize: 9, color: '#D4AF37', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Image size={9} />{ev.media.length}</span>}
                       {lastEditor(ev) && (
                         <span style={{ fontSize: 9, color: '#555' }}>·
                           <span className="abadge sm" style={badgeStyle(lastEditor(ev))}>{authorEmoji(lastEditor(ev))} {authorName(lastEditor(ev))}</span>
@@ -819,8 +820,8 @@ export default function App() {
                     {ev.links && ev.links.length > 0 && (
                       <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                         {ev.links.map((lk, i) => (
-                          <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="link-tag" onClick={e => e.stopPropagation()}>
-                            🔗 {lk.label}
+                          <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="link-tag" onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <Link size={10} />{lk.label}
                           </a>
                         ))}
                       </div>
@@ -858,7 +859,7 @@ export default function App() {
                       onClick={(e) => { e.stopPropagation(); openEdit(ev) }}
                       title="編輯"
                     >
-                      ✏️
+                      <Pencil size={14} />
                     </button>
                   </div>
                 </div>
@@ -874,7 +875,7 @@ export default function App() {
                           onClick={() => deleteInlineNote(ev.id, i)}
                           className="inline-comment-delete"
                           title="刪除"
-                        >✕</button>
+                        ><X size={12} /></button>
                       </div>
                     ))}
                   </div>
@@ -901,9 +902,9 @@ export default function App() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#D4AF37' }}>
-                {modal.mode === 'new' ? '＋ 新增事件' : modal.mode === 'edit' ? '✏️ 編輯事件' : '📋 事件詳情'}
+                {modal.mode === 'new' ? <><Plus size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 新增事件</> : modal.mode === 'edit' ? <><Pencil size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 編輯事件</> : <><Calendar size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 事件詳情</>}
               </div>
-              <button onClick={closeModal} className="modal-close-btn">✕</button>
+              <button onClick={closeModal} className="modal-close-btn"><X size={16} /></button>
             </div>
 
             {/* Edit / New Form */}
@@ -992,7 +993,7 @@ export default function App() {
                 <div className="divider" />
 
                 {/* Media */}
-                <label className="form-label">🖼️ 圖片 / 影片</label>
+                <label className="form-label"><Image size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />圖片 / 影片</label>
                 <div className="media-grid">
                   {form.media.map((m, i) => (
                     <div key={i} className="media-grid-item">
@@ -1001,7 +1002,7 @@ export default function App() {
                       ) : (
                         <div className="media-grid-video">🎬</div>
                       )}
-                      <button onClick={() => removeMedia(i)} className="media-grid-delete">✕</button>
+                      <button onClick={() => removeMedia(i)} className="media-grid-delete"><X size={12} /></button>
                     </div>
                   ))}
                 </div>
@@ -1030,19 +1031,19 @@ export default function App() {
                     disabled={uploading}
                     className="upload-btn"
                   >
-                    {uploading ? '上傳中...' : '📷 上傳圖片'}
+                    {uploading ? '上傳中...' : <><Camera size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />上傳圖片</>}
                   </button>
                 </div>
 
                 <div className="divider" />
 
                 {/* Links */}
-                <label className="form-label">🔗 相關連結</label>
+                <label className="form-label"><Link size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />相關連結</label>
                 {form.links.map((lk, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
-                    <span style={{ flex: 1, fontSize: 11, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🔗 {lk.label}</span>
+                    <span style={{ flex: 1, fontSize: 11, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={10} />{lk.label}</span>
                     {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)} {authorName(lk.author)}</span>}
-                    <button onClick={() => removeLink(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12 }}>✕</button>
+                    <button onClick={() => removeLink(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12, display: 'flex', alignItems: 'center' }}><X size={12} /></button>
                   </div>
                 ))}
                 <div className="link-input-group">
@@ -1057,7 +1058,7 @@ export default function App() {
 
                 <div className="form-actions">
                   <button onClick={closeModal} className="cancel-btn">取消</button>
-                  <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn save-btn">{saving ? '儲存中...' : '💾 儲存'}</button>
+                  <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn save-btn">{saving ? '儲存中...' : <><Save size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />儲存</>}</button>
                 </div>
                 {modal.mode === 'edit' && (
                   confirmDel ? (
@@ -1066,7 +1067,7 @@ export default function App() {
                       <button onClick={deleteEvent} style={{ flex: 1, padding: '12px 16px', background: '#E63946', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600 }}>確定刪除</button>
                     </div>
                   ) : (
-                    <button onClick={() => setConfirmDel(true)} className="del-btn" style={{ width: '100%', marginTop: 8, padding: '12px 16px', fontSize: 14 }}>🗑 刪除事件</button>
+                    <button onClick={() => setConfirmDel(true)} className="del-btn" style={{ width: '100%', marginTop: 8, padding: '12px 16px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><Trash2 size={14} />刪除事件</button>
                   )
                 )}
               </div>
@@ -1094,7 +1095,7 @@ export default function App() {
                 {viewEvent.media?.length > 0 && (
                   <>
                     <div className="divider" style={{ marginTop: 0 }} />
-                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🖼️ 圖片 / 影片</h4>
+                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Image size={12} />圖片 / 影片</h4>
                     {viewEvent.media.map((m, i) => (
                       <div key={i} style={{ marginBottom: 12 }}>
                         <MediaPreview url={m.url} />
@@ -1111,10 +1112,10 @@ export default function App() {
                 {viewEvent.links?.length > 0 && (
                   <>
                     <div className="divider" style={{ marginTop: 0 }} />
-                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>🔗 相關連結</h4>
+                    <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Link size={12} />相關連結</h4>
                     {viewEvent.links.map((lk, i) => (
                       <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4, textDecoration: 'none' }}>
-                        <span style={{ flex: 1, fontSize: 12, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🔗 {lk.label}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={10} />{lk.label}</span>
                         {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)}</span>}
                       </a>
                     ))}
@@ -1142,8 +1143,8 @@ export default function App() {
 
                 {/* 底部操作區 */}
                 <div className="form-actions">
-                  <button onClick={() => setShowLog(!showLog)} className="cancel-btn">{showLog ? '收起紀錄' : '📜 編輯紀錄'}</button>
-                  <button onClick={() => openEdit(viewEvent)} className="gold-btn save-btn">✏️ 編輯</button>
+                  <button onClick={() => setShowLog(!showLog)} className="cancel-btn">{showLog ? '收起紀錄' : <><History size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />編輯紀錄</>}</button>
+                  <button onClick={() => openEdit(viewEvent)} className="gold-btn save-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}><Pencil size={14} />編輯</button>
                 </div>
 
                 {showLog && (
@@ -1180,7 +1181,7 @@ export default function App() {
               autoFocus
             />
             <button onClick={() => saveInlineNote(expandedId)}>送出</button>
-            <button onClick={() => { setExpandedId(null); setInlineNote('') }} className="comment-bar-close">✕</button>
+            <button onClick={() => { setExpandedId(null); setInlineNote('') }} className="comment-bar-close"><X size={14} /></button>
           </div>
         </div>
       )}
@@ -1192,7 +1193,7 @@ export default function App() {
           className="floating-btn scroll-top"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-          ↑
+          <ChevronUp size={20} />
         </button>
       )}
     </div>
