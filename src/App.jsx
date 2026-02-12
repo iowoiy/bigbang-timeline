@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip } from 'lucide-react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
@@ -194,9 +194,9 @@ export default function App() {
 
   const fileInputRef = useRef(null)
 
-  // Toast helper
-  const flash = (msg) => {
-    setToast(msg)
+  // Toast helper - type: 'success' | 'error' | 'info'
+  const flash = (msg, type = 'info') => {
+    setToast({ msg, type })
     setTimeout(() => setToast(null), 2500)
   }
 
@@ -235,9 +235,9 @@ export default function App() {
     try {
       await saveEvents(newEvents)
       setEvents(newEvents)
-      flash('✅ 已儲存（所有人可見）')
+      flash('已儲存（所有人可見）', 'success')
     } catch {
-      flash('❌ 儲存失敗，請稍後重試')
+      flash('儲存失敗，請稍後重試', 'error')
     }
     setSaving(false)
   }
@@ -248,10 +248,10 @@ export default function App() {
       const data = await loadEvents()
       if (Array.isArray(data)) {
         setEvents(data)
-        flash('✅ 已同步最新')
+        flash('已同步最新', 'success')
       }
     } catch {
-      flash('載入失敗')
+      flash('載入失敗', 'error')
     }
     setSyncing(false)
   }
@@ -465,11 +465,11 @@ export default function App() {
     // 過濾有效檔案
     const validFiles = files.filter(file => {
       if (file.size > 32 * 1024 * 1024) {
-        flash(`❌ ${file.name} 太大，最大 32MB`)
+        flash(`${file.name} 太大，最大 32MB`, 'error')
         return false
       }
       if (!file.type.startsWith('image/')) {
-        flash(`❌ ${file.name} 不是圖片檔案`)
+        flash(`${file.name} 不是圖片檔案`, 'error')
         return false
       }
       return true
@@ -489,12 +489,12 @@ export default function App() {
         }))
         successCount++
       } catch {
-        flash(`❌ ${file.name} 上傳失敗`)
+        flash(`${file.name} 上傳失敗`, 'error')
       }
     }
 
     if (successCount > 0) {
-      flash(`✅ 已上傳 ${successCount} 張圖片`)
+      flash(`已上傳 ${successCount} 張圖片`, 'success')
     }
     setUploading(false)
     // 清空 input
@@ -522,7 +522,7 @@ export default function App() {
 
     for (const file of imageFiles) {
       if (file.size > 32 * 1024 * 1024) {
-        flash('❌ 圖片太大，最大 32MB')
+        flash('圖片太大，最大 32MB', 'error')
         continue
       }
       try {
@@ -533,12 +533,12 @@ export default function App() {
         }))
         successCount++
       } catch {
-        flash('❌ 圖片上傳失敗')
+        flash('圖片上傳失敗', 'error')
       }
     }
 
     if (successCount > 0) {
-      flash(`✅ 已貼上 ${successCount} 張圖片`)
+      flash(`已貼上 ${successCount} 張圖片`, 'success')
     }
     setUploading(false)
   }
@@ -584,7 +584,7 @@ export default function App() {
     }
     persist(events.map(e => e.id === updated.id ? updated : e))
     setInlineNote('')
-    flash('✅ 留言已送出')
+    flash('留言已送出', 'success')
   }
 
   // 展開/收起留言
@@ -610,7 +610,7 @@ export default function App() {
       editLog: [...(ev.editLog || []), { author: me, action: '刪除留言', ts: Date.now() }]
     }
     persist(events.map(e => e.id === updated.id ? updated : e))
-    flash('已刪除留言')
+    flash('已刪除留言', 'success')
   }
 
   // ========== 選擇身份 ==========
@@ -654,7 +654,13 @@ export default function App() {
   return (
     <div>
       {/* Toast */}
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          {toast.type === 'success' && <Check size={14} />}
+          {toast.type === 'error' && <AlertCircle size={14} />}
+          {toast.msg}
+        </div>
+      )}
 
       {/* 頂部工具列：logo + 同步（左）、新增（右） */}
       <div className="top-bar">

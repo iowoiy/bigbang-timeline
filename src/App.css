@@ -930,6 +930,25 @@ textarea.form-input {
   z-index: 9999;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   animation: toastIn 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-success {
+  border-color: rgba(42, 157, 143, 0.5);
+}
+
+.toast-success svg {
+  color: #2A9D8F;
+}
+
+.toast-error {
+  border-color: rgba(230, 57, 70, 0.5);
+}
+
+.toast-error svg {
+  color: #E63946;
 }
 
 /* ========== Footer ========== */
