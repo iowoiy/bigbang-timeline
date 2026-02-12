@@ -4,8 +4,8 @@
 
 const config = {
   // JSONBin 設定
-  API_KEY: import.meta.env.VITE_JSONBIN_API_KEY || '$2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-  BIN_ID: import.meta.env.VITE_JSONBIN_BIN_ID || 'xxxxxxxxxxxxxxxxxxxxxxxx',
+  API_KEY: import.meta.env.VITE_JSONBIN_API_KEY || '$2a$10$sJV8fUwDLp24EpMiIkLd5.o3WFNJgQoYFhljwxBis3k4d/nUps7Zy',
+  BIN_ID: import.meta.env.VITE_JSONBIN_BIN_ID || '6981c248d0ea881f409d3788',
 
   // ImgBB 圖片上傳設定
   IMGBB_API_KEY: '5cbce8288a96071b5e9d505cbdd69846',
