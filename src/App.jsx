@@ -179,6 +179,7 @@ export default function App() {
   const [expandedId, setExpandedId] = useState(null) // 展開留言的卡片 ID
   const [showScrollTop, setShowScrollTop] = useState(false) // 回到頂部按鈕
   const [yearNavOpen, setYearNavOpen] = useState(false) // 年份導航收合
+  const [selectedYear, setSelectedYear] = useState(null) // 選中的年份
   const [memberNavOpen, setMemberNavOpen] = useState(false) // 成員篩選收合
   const [inlineNote, setInlineNote] = useState('') // 內嵌留言輸入
   const [linkUrl, setLinkUrl] = useState('')
@@ -597,17 +598,15 @@ export default function App() {
       {/* Toast */}
       {toast && <div className="toast">{toast}</div>}
 
-      {/* 左上角：身份 + 同步 */}
-      <div className="top-bar left">
-        <div className="identity-bar">
-          <span className="abadge" style={badgeStyle(me)}>{authorEmoji(me)} {authorName(me)}</span>
+      {/* 頂部工具列：logo + 同步（左）、新增（右） */}
+      <div className="top-bar">
+        <div className="top-bar-left">
+          <span className="top-bar-logo">BIGBANG</span>
           <button onClick={refresh} className="sync-btn" title="同步">🔄</button>
         </div>
-      </div>
-
-      {/* 右上角：新增事件 */}
-      <div className="top-bar right">
-        <button onClick={openNew} className="add-btn">＋</button>
+        <div className="top-bar-right">
+          <button onClick={openNew} className="add-btn">＋</button>
+        </div>
       </div>
 
       {/* Header */}
@@ -648,15 +647,16 @@ export default function App() {
               className="filter-btn dropdown-toggle"
               onClick={() => { setYearNavOpen(!yearNavOpen); setMemberNavOpen(false) }}
             >
-              年份 {yearNavOpen ? '▲' : '▼'}
+              年份 <span className="dropdown-arrow">{yearNavOpen ? '▲' : '▼'}</span>
             </button>
             {yearNavOpen && (
               <div className="filter-dropdown-list">
                 {years.map(year => (
                   <button
                     key={year}
-                    className="filter-dropdown-item"
+                    className={`filter-dropdown-item ${selectedYear === year ? 'active' : ''}`}
                     onClick={() => {
+                      setSelectedYear(year)
                       const el = document.getElementById(`year-${year}`)
                       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
                       setYearNavOpen(false)
@@ -675,7 +675,7 @@ export default function App() {
               className={`filter-btn dropdown-toggle member-toggle ${memberFilter.length > 0 ? 'active' : ''}`}
               onClick={() => { setMemberNavOpen(!memberNavOpen); setYearNavOpen(false) }}
             >
-              {memberFilter.length === 0 ? '成員' : `成員(${memberFilter.length})`} {memberNavOpen ? '▲' : '▼'}
+              {memberFilter.length === 0 ? '成員' : `成員(${memberFilter.length})`} <span className="dropdown-arrow">{memberNavOpen ? '▲' : '▼'}</span>
             </button>
             {memberNavOpen && (
               <div className="filter-dropdown-list">
@@ -1131,10 +1131,10 @@ export default function App() {
       )}
       */}
 
-      {/* 回到頂部按鈕 */}
+      {/* 懸浮按鈕：回到頂部 */}
       {showScrollTop && (
         <button
-          className="scroll-top-btn"
+          className="floating-btn scroll-top"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
           ↑
