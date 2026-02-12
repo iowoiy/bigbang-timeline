@@ -336,6 +336,30 @@ textarea.form-input {
   font-size: 11px;
 }
 
+/* ========== Form Actions (儲存/取消) ========== */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.form-actions .cancel-btn {
+  flex: 1;
+  padding: 12px 16px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #888;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-actions .save-btn {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
 .divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.06);

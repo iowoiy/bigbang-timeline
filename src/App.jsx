@@ -812,12 +812,11 @@ export default function App() {
 
                 <div className="divider" />
 
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn" style={{ padding: '8px 24px' }}>{saving ? '儲存中...' : '💾 儲存'}</button>
-                    <button onClick={closeModal} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#888', borderRadius: 8, fontSize: 12 }}>取消</button>
-                  </div>
-                  {modal.mode === 'edit' && (
+                <div className="form-actions">
+                  <button onClick={closeModal} className="cancel-btn">取消</button>
+                  <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn save-btn">{saving ? '儲存中...' : '💾 儲存'}</button>
+                </div>
+                {modal.mode === 'edit' && (
                     confirmDel ? (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span style={{ fontSize: 11, color: '#E63946' }}>確定？</span>
@@ -827,8 +826,7 @@ export default function App() {
                     ) : (
                       <button onClick={() => setConfirmDel(true)} className="del-btn">🗑 刪除事件</button>
                     )
-                  )}
-                </div>
+                )}
               </div>
             )}
 
