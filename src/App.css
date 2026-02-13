@@ -358,6 +358,27 @@ a {
   font-weight: 600;
 }
 
+/* 年份排序按鈕 */
+.year-sort-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.year-sort-btn:hover {
+  color: #D4AF37;
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
 /* ========== Filters ========== */
 .filters {
   position: sticky;
@@ -1784,14 +1805,5 @@ input[type="date"].form-input::after {
   .image-slider-thumb {
     width: 50px;
     height: 50px;
-  }
-
-  /* 滑動提示 */
-  .image-slider-info::after {
-    content: '← 滑動切換 →';
-    display: block;
-    font-size: 10px;
-    color: #555;
-    margin-top: 4px;
   }
 }

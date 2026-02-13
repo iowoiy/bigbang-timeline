@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight } from 'lucide-react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
@@ -200,6 +200,7 @@ export default function App() {
   const [showScrollTop, setShowScrollTop] = useState(false) // 回到頂部按鈕
   const [yearNavOpen, setYearNavOpen] = useState(false) // 年份導航收合
   const [selectedYear, setSelectedYear] = useState(null) // 選中的年份
+  const [yearSortDesc, setYearSortDesc] = useState(true) // 年份排序：true = 新到舊（降序）
   const [memberNavOpen, setMemberNavOpen] = useState(false) // 成員篩選收合
   const [inlineNote, setInlineNote] = useState('') // 內嵌留言輸入
   const [linkUrl, setLinkUrl] = useState('')
@@ -305,7 +306,10 @@ export default function App() {
     return m
   }, [filtered])
 
-  const years = useMemo(() => Object.keys(byYear).sort((a, b) => a - b), [byYear])
+  const years = useMemo(() => {
+    const sorted = Object.keys(byYear).sort((a, b) => a - b)
+    return yearSortDesc ? sorted.reverse() : sorted
+  }, [byYear, yearSortDesc])
 
   const supplementedCount = useMemo(() =>
     events.filter(e => (e.links?.length || 0) + (e.notes?.length || 0) + (e.media?.length || 0) > 0).length
@@ -752,6 +756,15 @@ export default function App() {
               </div>
             )}
           </div>
+
+          {/* 年份排序切換 */}
+          <button
+            className="year-sort-btn"
+            onClick={() => setYearSortDesc(!yearSortDesc)}
+            title={yearSortDesc ? '目前：新 → 舊' : '目前：舊 → 新'}
+          >
+            <ArrowUpDown size={12} />
+          </button>
 
           {/* 成員篩選（多選） */}
           <div className="filter-dropdown">
