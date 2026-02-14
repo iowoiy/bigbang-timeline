@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown, Sun, Moon } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
@@ -212,6 +212,7 @@ export default function App() {
   const [showLog, setShowLog] = useState(false)
   const [imageSlider, setImageSlider] = useState({ open: false, images: [], index: 0 }) // 圖片輪播
   const [touchStart, setTouchStart] = useState(null) // 觸控起始位置
+  const [lightMode, setLightMode] = useState(() => localStorage.getItem('lightMode') === 'true') // 淺色模式
 
   const fileInputRef = useRef(null)
 
@@ -228,6 +229,12 @@ export default function App() {
       setLoading(false)
     })
   }, [])
+
+  // 淺色模式切換
+  useEffect(() => {
+    document.body.classList.toggle('light-mode', lightMode)
+    localStorage.setItem('lightMode', lightMode)
+  }, [lightMode])
 
   // 監聽滾動顯示回到頂部按鈕
   useEffect(() => {
@@ -693,6 +700,9 @@ export default function App() {
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
+          <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
+            {lightMode ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
           <button onClick={openNew} className="add-btn"><Plus size={20} /></button>
         </div>
       </div>
