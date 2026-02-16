@@ -862,12 +862,19 @@ export default function App() {
                     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.4 }}>{ev.title}</div>
                     <div className="event-desc">{ev.desc}</div>
 
-                    {/* 媒體預覽（卡片中只顯示第一張圖） */}
-                    {ev.media?.length > 0 && isImageUrl(ev.media[0].url) && (
-                      <div className="card-thumbnail">
-                        <img src={ev.media[0].url} alt="" />
-                      </div>
-                    )}
+                    {/* 媒體預覽（卡片中顯示第一張圖片或影片縮圖） */}
+                    {ev.media?.length > 0 && (() => {
+                      const firstImg = ev.media.find(m => isImageUrl(m.url))
+                      const firstVid = !firstImg ? ev.media.find(m => getVideoThumbnail(m.url)) : null
+                      const thumbUrl = firstImg ? firstImg.url : firstVid ? getVideoThumbnail(firstVid.url) : null
+                      if (!thumbUrl) return null
+                      return (
+                        <div className="card-thumbnail">
+                          <img src={thumbUrl} alt="" />
+                          {firstVid && <div className="card-thumbnail-play">▶</div>}
+                        </div>
+                      )
+                    })()}
 
                     {ev.links && ev.links.length > 0 && (
                       <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>

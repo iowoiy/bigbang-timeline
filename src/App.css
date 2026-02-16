@@ -1117,6 +1117,7 @@ textarea.form-input {
   border-radius: 6px;
   overflow: hidden;
   max-width: 200px;
+  position: relative;
 }
 
 .card-thumbnail img {
@@ -1124,6 +1125,23 @@ textarea.form-input {
   height: 120px;
   object-fit: cover;
   display: block;
+}
+
+.card-thumbnail-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
 }
 
 /* 編輯模式的圖片網格 */
