@@ -835,9 +835,14 @@
     "id": "e50",
     "year": 2024,
     "month": 12,
+    "day": 26,
+    "cats": [
+      "tv",
+      "film"
+    ],
     "cat": "tv",
     "title": "T.O.P《魷魚遊戲2》— Thanos",
-    "desc": "飾演玩家230號，國際評價正面。",
+    "desc": "依據維基百科《BIGBANG影視作品列表》：2024/12/26 列為『電影』作品，T.O.P 飾演「薩諾斯（Thanos）」並標註為男配角。此處同時保留 TV 分類以便時間軸呈現。",
     "members": [
       "T.O.P"
     ],
@@ -1956,5 +1961,365 @@
         "ts": 1771083424506
       }
     ]
+  },
+  {
+    "id": "e52",
+    "year": 2009,
+    "month": 4,
+    "day": 2,
+    "cats": [
+      "film"
+    ],
+    "cat": "film",
+    "title": "勝利客串電影《為什麼來我家》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》：勝利於 2009/04/02 電影《為什麼來我家》客串，角色為「智旻」。",
+    "members": [
+      "勝利"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e53",
+    "year": 2016,
+    "month": 7,
+    "day": 16,
+    "cats": [
+      "film"
+    ],
+    "cat": "film",
+    "title": "勝利出演《HiGH&LOW THE MOVIE》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》：2016/07/16 上映，勝利飾演「Li」，性質為男配角。",
+    "members": [
+      "勝利"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e54",
+    "year": 2018,
+    "month": 3,
+    "day": 2,
+    "cats": [
+      "film"
+    ],
+    "cat": "film",
+    "title": "勝利主演《宇宙有愛浪漫同游》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》：2018/03/02 上映，勝利飾演「Winson」，性質為男主角。",
+    "members": [
+      "勝利"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e55",
+    "year": 2007,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《偶像世界－秘密同居女》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2007）。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e56",
+    "year": 2007,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "音樂短劇《偶像劇場》（與 Wonder Girls）",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2007）：與 Wonder Girls 合作。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e57",
+    "year": 2007,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《權夫人與崔司機》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2007）：G-Dragon 與 T.O.P 參與。",
+    "members": [
+      "G-Dragon",
+      "T.O.P"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e58",
+    "year": 2008,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《咖啡王子2號店》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2008）。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e59",
+    "year": 2008,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "音樂短劇《愛的麵包屋》（與少女時代、2PM）",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2008）：大聲、勝利與少女時代及 2PM 共同出演。",
+    "members": [
+      "大聲",
+      "勝利"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e60",
+    "year": 2009,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《BIGBANG花樣男子》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2009）。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e61",
+    "year": 2009,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《BIGBANG病毒》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2009）：全員。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e62",
+    "year": 2009,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《志龍勝利探索生活》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2009）：G-Dragon 與勝利。",
+    "members": [
+      "G-Dragon",
+      "勝利"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e63",
+    "year": 2010,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《一天 / Haru》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2010）。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e64",
+    "year": 2010,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《Hyundai Motor Shouting Korea》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2010）。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e65",
+    "year": 2011,
+    "month": 1,
+    "cats": [
+      "tv",
+      "short_drama"
+    ],
+    "cat": "tv",
+    "title": "短劇《BIGBANG秘密花園》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》短劇條目（2011）：全員。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e66",
+    "year": 2009,
+    "month": 1,
+    "cats": [
+      "variety"
+    ],
+    "cat": "variety",
+    "title": "真人秀《BIGBANG－樂天遊樂園特輯》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》真人秀節目（專屬節目）條目（2009）。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e67",
+    "year": 2010,
+    "month": 1,
+    "cats": [
+      "variety"
+    ],
+    "cat": "variety",
+    "title": "真人秀《BIGBANG－兩天一夜》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》真人秀節目（專屬節目）條目（2010）。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e68",
+    "year": 2011,
+    "month": 1,
+    "cats": [
+      "variety"
+    ],
+    "cat": "variety",
+    "title": "真人秀《BIGBANG TV》（Mnet）",
+    "desc": "依據維基百科《BIGBANG影視作品列表》真人秀節目（專屬節目）條目（2011）：Mnet 播出。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e69",
+    "year": 2017,
+    "month": 1,
+    "cats": [
+      "variety"
+    ],
+    "cat": "variety",
+    "title": "真人秀《Run, BIGBANG Scout!》",
+    "desc": "依據維基百科《BIGBANG影視作品列表》真人秀節目（專屬節目）條目（2017）：YouTube Red／YG娛樂。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
+  },
+  {
+    "id": "e70",
+    "year": 2016,
+    "month": 1,
+    "cats": [
+      "tv",
+      "documentary"
+    ],
+    "cat": "tv",
+    "title": "《BIGBANG MADE：紀錄片》（SBS）",
+    "desc": "依據維基百科《BIGBANG影視作品列表》紀錄片條目（2016）：電視版《BIGBANG MADE：紀錄片》，放送局為 SBS。",
+    "members": [
+      "全員"
+    ],
+    "links": [],
+    "notes": [],
+    "media": [],
+    "editLog": []
   }
 ]
