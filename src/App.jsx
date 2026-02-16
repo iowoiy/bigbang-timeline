@@ -864,7 +864,7 @@ export default function App() {
 
                     {/* 媒體預覽（卡片中只顯示第一張圖） */}
                     {ev.media?.length > 0 && isImageUrl(ev.media[0].url) && (
-                      <div className="card-thumbnail" onClick={e => e.stopPropagation()}>
+                      <div className="card-thumbnail">
                         <img src={ev.media[0].url} alt="" />
                       </div>
                     )}
