@@ -157,7 +157,7 @@ async function fetchIGData(url) {
   }
 }
 
-export default function SocialArchive({ me, onBack }) {
+export default function SocialArchive({ isAdmin, onBack }) {
   const [archives, setArchives] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -1240,7 +1240,7 @@ export default function SocialArchive({ me, onBack }) {
           </button>
 
           {/* 壞圖篩選（僅管理員可見） */}
-          {me && (
+          {isAdmin && (
             <button
               className={`filter-broken-btn ${filterBrokenImages ? 'active' : ''}`}
               onClick={() => {
@@ -1295,7 +1295,7 @@ export default function SocialArchive({ me, onBack }) {
           </div>
 
           {/* 勾選模式（僅管理員可見） */}
-          {me && (
+          {isAdmin && (
             <button
               className={`select-mode-btn ${selectMode ? 'active' : ''}`}
               onClick={() => {

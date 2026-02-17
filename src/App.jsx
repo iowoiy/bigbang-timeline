@@ -224,7 +224,8 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const me = false // 手動改成 true 來啟用管理功能
+  const isAdmin = false // 手動改成 true 來啟用管理功能（IG按鈕、壞圖檢查、勾選模式）
+  const [me, setMe] = useState(null) // 作者身份
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
   const [modal, setModal] = useState(null)
@@ -751,7 +752,7 @@ export default function App() {
 
   // ========== 社群備份頁面 ==========
   if (currentPage === 'social') {
-    return <SocialArchive me={me} onBack={() => setCurrentPage('timeline')} />
+    return <SocialArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} />
   }
 
   // ========== 主介面 ==========
@@ -773,7 +774,7 @@ export default function App() {
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
-          {me && (
+          {isAdmin && (
             <button onClick={() => setCurrentPage('social')} className="social-btn" title="社群備份">
               <Instagram size={16} />
             </button>
