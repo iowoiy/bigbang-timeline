@@ -373,12 +373,10 @@ export default function SocialArchive({ isAdmin, onBack }) {
 
       return true
     } catch (error) {
-      // HEAD 請求可能被 CORS 擋住，改用 Image 物件作為備用方案
-      console.log(`⚠️ HEAD 請求失敗，改用 Image 檢查: ${url}`)
-
+      // HEAD 請求被 CORS 擋住，改用 Image 物件作為備用方案
+      // 不設定 crossOrigin，讓瀏覽器用一般模式載入（404 會觸發 onerror）
       return new Promise(resolve => {
         const img = new window.Image()
-        img.crossOrigin = 'anonymous' // 嘗試啟用 CORS
 
         const timeout = setTimeout(() => {
           img.src = ''
@@ -387,9 +385,8 @@ export default function SocialArchive({ isAdmin, onBack }) {
 
         img.onload = () => {
           clearTimeout(timeout)
-          // 額外檢查：圖片載入後確認尺寸不是 0（有些 CDN 會返回空白圖片）
+          // 額外檢查：圖片尺寸不是 0
           if (img.naturalWidth === 0 || img.naturalHeight === 0) {
-            console.log(`❌ 圖片尺寸為 0: ${url}`)
             resolve(false)
           } else {
             resolve(true)
