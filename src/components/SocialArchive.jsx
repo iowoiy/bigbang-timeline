@@ -348,31 +348,62 @@ export default function SocialArchive({ isAdmin, onBack }) {
     }
   }
 
-  // 用 Image 物件檢查圖片是否可載入（更準確）
-  function checkImageLoadable(url) {
-    return new Promise(resolve => {
-      if (!url) {
-        resolve(false)
-        return
+  // 用 fetch 檢查圖片是否可載入（比 Image 物件更準確）
+  async function checkImageLoadable(url) {
+    if (!url) return false
+
+    try {
+      // 使用 fetch 發送 HEAD 請求檢查資源狀態
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 秒超時
+
+      const response = await fetch(url, {
+        method: 'HEAD',
+        mode: 'cors',
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      // 只有 200-299 狀態碼才算成功
+      if (!response.ok) {
+        console.log(`❌ 圖片檢查失敗 (HTTP ${response.status}): ${url}`)
+        return false
       }
-      const img = new window.Image()
-      img.onload = () => resolve(true)
-      img.onerror = () => resolve(false)
-      // 設定超時
-      const timeout = setTimeout(() => {
-        img.src = ''
-        resolve(false)
-      }, 10000) // 10 秒超時
-      img.onload = () => {
-        clearTimeout(timeout)
-        resolve(true)
-      }
-      img.onerror = () => {
-        clearTimeout(timeout)
-        resolve(false)
-      }
-      img.src = url
-    })
+
+      return true
+    } catch (error) {
+      // HEAD 請求可能被 CORS 擋住，改用 Image 物件作為備用方案
+      console.log(`⚠️ HEAD 請求失敗，改用 Image 檢查: ${url}`)
+
+      return new Promise(resolve => {
+        const img = new window.Image()
+        img.crossOrigin = 'anonymous' // 嘗試啟用 CORS
+
+        const timeout = setTimeout(() => {
+          img.src = ''
+          resolve(false)
+        }, 10000)
+
+        img.onload = () => {
+          clearTimeout(timeout)
+          // 額外檢查：圖片載入後確認尺寸不是 0（有些 CDN 會返回空白圖片）
+          if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+            console.log(`❌ 圖片尺寸為 0: ${url}`)
+            resolve(false)
+          } else {
+            resolve(true)
+          }
+        }
+
+        img.onerror = () => {
+          clearTimeout(timeout)
+          resolve(false)
+        }
+
+        img.src = url
+      })
+    }
   }
 
   // 檢查所有圖片
