@@ -31,7 +31,12 @@ const IG_ACCOUNTS = {
   '全員': 'bigbangofficial',
 }
 
-const SOCIAL_JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.SOCIAL_BIN_ID || config.BIN_ID}`
+// 取得成員對應的 JSONBin URL
+function getMemberBinUrl(member) {
+  const binId = config.SOCIAL_BINS?.[member]
+  if (!binId) return null
+  return `https://api.jsonbin.io/v3/b/${binId}`
+}
 
 function getMemberColor(name) {
   return MEMBERS.find(m => m.name === name)?.color || '#E5A500'
@@ -214,18 +219,32 @@ export default function SocialArchive({ isAdmin, onBack }) {
   async function loadArchives() {
     setLoading(true)
     try {
-      // 從 JSONBin 載入
-      if (config.SOCIAL_BIN_ID) {
-        const res = await fetch(`${SOCIAL_JSONBIN_URL}/latest`, {
-          headers: { 'X-Master-Key': config.API_KEY }
-        })
-        if (res.ok) {
-          const data = await res.json()
-          if (data.record?.archives) {
-            setArchives(data.record.archives)
+      // 從各成員的 JSONBin 載入並合併
+      const allArchives = []
+      const members = Object.keys(config.SOCIAL_BINS || {})
+
+      for (const member of members) {
+        const binUrl = getMemberBinUrl(member)
+        if (!binUrl) continue
+
+        try {
+          const res = await fetch(`${binUrl}/latest`, {
+            headers: { 'X-Master-Key': config.API_KEY }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            if (data.record?.archives) {
+              allArchives.push(...data.record.archives)
+            }
           }
+        } catch (err) {
+          console.warn(`載入 ${member} 資料失敗`, err)
         }
       }
+
+      // 按更新時間排序（新的在前）
+      allArchives.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
+      setArchives(allArchives)
     } catch (err) {
       console.error('載入失敗', err)
       showToast('載入失敗', 'error')
@@ -234,20 +253,48 @@ export default function SocialArchive({ isAdmin, onBack }) {
     }
   }
 
+  // 儲存單一成員的資料到對應的 bin
+  async function saveMemberArchives(member, memberArchives) {
+    const binUrl = getMemberBinUrl(member)
+    if (!binUrl) {
+      console.warn(`找不到 ${member} 的 bin`)
+      return false
+    }
+
+    try {
+      const res = await fetch(binUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': config.API_KEY
+        },
+        body: JSON.stringify({ archives: memberArchives, updatedAt: Date.now() })
+      })
+      return res.ok
+    } catch (err) {
+      console.error(`儲存 ${member} 資料失敗`, err)
+      return false
+    }
+  }
+
   async function saveArchives(newArchives) {
     setSaving(true)
     try {
-      // 存到 JSONBin
-      if (config.SOCIAL_BIN_ID) {
-        await fetch(SOCIAL_JSONBIN_URL, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': config.API_KEY
-          },
-          body: JSON.stringify({ archives: newArchives, updatedAt: Date.now() })
-        })
+      // 按成員分組儲存
+      const memberGroups = {}
+      for (const archive of newArchives) {
+        const member = archive.member || '全員'
+        if (!memberGroups[member]) {
+          memberGroups[member] = []
+        }
+        memberGroups[member].push(archive)
       }
+
+      // 儲存每個成員的資料
+      const savePromises = Object.entries(memberGroups).map(([member, archives]) =>
+        saveMemberArchives(member, archives)
+      )
+      await Promise.all(savePromises)
 
       setArchives(newArchives)
       showToast('已儲存')
@@ -584,17 +631,11 @@ export default function SocialArchive({ isAdmin, onBack }) {
         const newArchives = prevArchives.map(a =>
           a.id === itemId ? updatedItem : a
         )
-        // 存到 JSONBin
-        if (config.SOCIAL_BIN_ID) {
-          fetch(SOCIAL_JSONBIN_URL, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Master-Key': config.API_KEY
-            },
-            body: JSON.stringify({ archives: newArchives, updatedAt: Date.now() })
-          }).catch(err => console.warn('JSONBin 儲存失敗:', err))
-        }
+        // 存到對應成員的 JSONBin
+        const member = updatedItem.member || '全員'
+        const memberArchives = newArchives.filter(a => a.member === member)
+        saveMemberArchives(member, memberArchives)
+          .catch(err => console.warn('JSONBin 儲存失敗:', err))
         return newArchives
       })
 
@@ -1214,19 +1255,23 @@ export default function SocialArchive({ isAdmin, onBack }) {
       await new Promise(resolve => setTimeout(resolve, 0))
     }
 
-    // 儲存已完成的部分到 JSONBin
+    // 儲存已完成的部分到各成員的 JSONBin
     if (successCount > 0) {
       setArchives(prev => {
-        if (config.SOCIAL_BIN_ID) {
-          fetch(SOCIAL_JSONBIN_URL, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Master-Key': config.API_KEY
-            },
-            body: JSON.stringify({ archives: prev, updatedAt: Date.now() })
-          }).catch(err => console.warn('JSONBin 儲存失敗:', err))
+        // 按成員分組儲存
+        const memberGroups = {}
+        for (const archive of prev) {
+          const member = archive.member || '全員'
+          if (!memberGroups[member]) {
+            memberGroups[member] = []
+          }
+          memberGroups[member].push(archive)
         }
+        // 儲存有更新的成員資料
+        Object.entries(memberGroups).forEach(([member, archives]) => {
+          saveMemberArchives(member, archives)
+            .catch(err => console.warn(`JSONBin 儲存 ${member} 失敗:`, err))
+        })
         return prev
       })
     }
