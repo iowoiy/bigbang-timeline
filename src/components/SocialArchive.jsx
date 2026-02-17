@@ -1239,31 +1239,33 @@ export default function SocialArchive({ me, onBack }) {
             <span>影片</span>
           </button>
 
-          {/* 壞圖篩選 */}
-          <button
-            className={`filter-broken-btn ${filterBrokenImages ? 'active' : ''}`}
-            onClick={() => {
-              if (Object.keys(brokenImageMap).length === 0 && !checkingBroken) {
-                // 還沒檢查過，先執行檢查
-                checkAllBrokenImages()
-              }
-              setFilterBrokenImages(!filterBrokenImages)
-            }}
-            title="檢查並篩選壞圖"
-            disabled={checkingBroken}
-          >
-            {checkingBroken ? (
-              <>
-                <span className="mini-spinner"></span>
-                <span>{checkProgress.current}/{checkProgress.total}</span>
-              </>
-            ) : (
-              <>
-                <ImageOff size={16} />
-                <span>壞圖{Object.keys(brokenImageMap).length > 0 ? ` (${Object.keys(brokenImageMap).length})` : ''}</span>
-              </>
-            )}
-          </button>
+          {/* 壞圖篩選（僅管理員可見） */}
+          {me && (
+            <button
+              className={`filter-broken-btn ${filterBrokenImages ? 'active' : ''}`}
+              onClick={() => {
+                if (Object.keys(brokenImageMap).length === 0 && !checkingBroken) {
+                  // 還沒檢查過，先執行檢查
+                  checkAllBrokenImages()
+                }
+                setFilterBrokenImages(!filterBrokenImages)
+              }}
+              title="檢查並篩選壞圖"
+              disabled={checkingBroken}
+            >
+              {checkingBroken ? (
+                <>
+                  <span className="mini-spinner"></span>
+                  <span>{checkProgress.current}/{checkProgress.total}</span>
+                </>
+              ) : (
+                <>
+                  <ImageOff size={16} />
+                  <span>壞圖{Object.keys(brokenImageMap).length > 0 ? ` (${Object.keys(brokenImageMap).length})` : ''}</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* 搜尋 */}
           <div className="search-box">
@@ -1292,17 +1294,19 @@ export default function SocialArchive({ me, onBack }) {
             </button>
           </div>
 
-          {/* 勾選模式 */}
-          <button
-            className={`select-mode-btn ${selectMode ? 'active' : ''}`}
-            onClick={() => {
-              setSelectMode(!selectMode)
-              setSelectedIds([])
-            }}
-            title="勾選模式"
-          >
-            <CheckSquare size={16} />
-          </button>
+          {/* 勾選模式（僅管理員可見） */}
+          {me && (
+            <button
+              className={`select-mode-btn ${selectMode ? 'active' : ''}`}
+              onClick={() => {
+                setSelectMode(!selectMode)
+                setSelectedIds([])
+              }}
+              title="勾選模式"
+            >
+              <CheckSquare size={16} />
+            </button>
+          )}
         </div>
 
         <div className="filter-stats">
