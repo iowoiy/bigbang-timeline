@@ -566,10 +566,10 @@ export default function SocialArchive({ isAdmin, onBack }) {
       }
 
       // 更新資料（這裡開始是背景執行，即使離開也會繼續）
-      showToast('同步中，上傳圖片到備份伺服器...', 'info')
+      showToast('同步中，檢查並上傳圖片...', 'info')
 
       const newMedia = data.media?.length > 0
-        ? await uploadMediaList(data.media)
+        ? await uploadMediaList(data.media, itemToSync.media || [])
         : []
 
       const updatedItem = {
@@ -975,16 +975,34 @@ export default function SocialArchive({ isAdmin, onBack }) {
     }
   }
 
-  // 上傳媒體列表（用於批次同步，完整重新上傳）
+  // 上傳媒體列表（智慧同步：檢查現有備份是否可用，只上傳壞掉或新的圖）
+  // existingMedia: 現有的已備份媒體列表（可選）
   // ImgBB 上傳成功就回傳，Cloudinary 在背景上傳
-  async function uploadMediaList(mediaList) {
+  async function uploadMediaList(mediaList, existingMedia = []) {
     const result = []
     const cloudinaryTasks = [] // 背景上傳任務
 
-    for (const m of mediaList) {
+    for (let i = 0; i < mediaList.length; i++) {
+      const m = mediaList[i]
+      const existing = existingMedia[i] // 對應位置的現有媒體
+
       if (m.type === 'image') {
+        // 檢查現有備份是否可用（同位置、已備份到 ImgBB）
+        if (existing?.type === 'image' && existing?.url?.includes('i.ibb.co')) {
+          const isAlive = await checkImageLoadable(existing.url)
+          if (isAlive) {
+            // 現有備份可用，直接沿用
+            console.log(`✅ 圖片 ${i + 1} 備份可用，跳過上傳`)
+            result.push({ ...existing })
+            continue
+          } else {
+            console.log(`⚠️ 圖片 ${i + 1} 備份已失效，重新上傳`)
+          }
+        }
+
+        // 需要上傳新圖片
         try {
-          // 先上傳 ImgBB（必要）
+          console.log(`📤 上傳圖片 ${i + 1}...`)
           const imgbbUrl = await uploadUrlToImgBB(m.url)
           const mediaItem = {
             url: imgbbUrl,
@@ -1006,11 +1024,29 @@ export default function SocialArchive({ isAdmin, onBack }) {
           result.push({ url: m.url, type: 'image' })
         }
       } else if (m.type === 'video') {
-        // 影片保留原始 URL，只上傳縮圖
+        // 影片保留原始 URL，只處理縮圖
         const videoItem = { url: m.url, type: 'video' }
+
         if (m.thumbnail) {
+          // 檢查現有縮圖備份是否可用
+          if (existing?.type === 'video' && existing?.thumbnail?.includes('i.ibb.co')) {
+            const isAlive = await checkImageLoadable(existing.thumbnail)
+            if (isAlive) {
+              console.log(`✅ 影片 ${i + 1} 縮圖備份可用，跳過上傳`)
+              videoItem.thumbnail = existing.thumbnail
+              if (existing.thumbnailBackupUrl) {
+                videoItem.thumbnailBackupUrl = existing.thumbnailBackupUrl
+              }
+              result.push(videoItem)
+              continue
+            } else {
+              console.log(`⚠️ 影片 ${i + 1} 縮圖備份已失效，重新上傳`)
+            }
+          }
+
+          // 需要上傳新縮圖
           try {
-            // 先上傳 ImgBB
+            console.log(`📤 上傳影片 ${i + 1} 縮圖...`)
             const imgbbUrl = await uploadUrlToImgBB(m.thumbnail)
             videoItem.thumbnail = imgbbUrl
 
@@ -1116,8 +1152,8 @@ export default function SocialArchive({ isAdmin, onBack }) {
             }
             console.log(`✅ ${item.id} 影片 URL 已更新（保留 thumbnail）`)
           } else {
-            // 完整重新上傳（原本的行為）
-            const newMedia = await uploadMediaList(data.media)
+            // 智慧同步：檢查現有備份，只上傳壞掉或新的圖
+            const newMedia = await uploadMediaList(data.media, item.media || [])
 
             // 再次檢查是否已取消（上傳後）
             if (batchCancelRef.current) {
