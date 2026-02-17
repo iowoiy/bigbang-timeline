@@ -922,7 +922,6 @@ export default function SocialArchive({ isAdmin, onBack }) {
         ...(m.thumbnailBackupUrl && { thumbnailBackupUrl: m.thumbnailBackupUrl }), // 縮圖備份 URL
       })),
       notes: formData.notes,
-      createdBy: me,
       createdAt: editingItem?.createdAt || Date.now(),
       updatedAt: Date.now(),
     }
