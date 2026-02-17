@@ -91,6 +91,9 @@
   background: rgba(10, 10, 10, 0.95);
   border-bottom: 1px solid rgba(212, 175, 55, 0.12);
   backdrop-filter: blur(20px);
+  position: sticky;
+  top: 60px; /* header 高度 */
+  z-index: 99;
 }
 
 .social-filters .filter-row {
@@ -314,6 +317,29 @@
   padding: 3px 8px;
   border-radius: 10px;
   font-size: 11px;
+}
+
+/* 同步中 Loading 覆蓋層 */
+.archive-thumb .syncing-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #E5A500;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 5;
+}
+
+.archive-thumb .syncing-overlay .spinning {
+  animation: spin 1s linear infinite;
 }
 
 .archive-info {
@@ -997,6 +1023,220 @@
   color: #E63946;
 }
 
+/* ========== 確認 Modal ========== */
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.confirm-modal {
+  background: #1A1A1A;
+  border-radius: 16px;
+  max-width: 420px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.confirm-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 20px 24px 0;
+  margin: 0;
+  color: #fff;
+}
+
+.confirm-modal-warning .confirm-modal-title {
+  color: #F5A623;
+}
+
+.confirm-modal-danger .confirm-modal-title {
+  color: #E63946;
+}
+
+.confirm-modal-info .confirm-modal-title {
+  color: #E5A500;
+}
+
+.confirm-modal-body {
+  padding: 16px 24px 20px;
+}
+
+.confirm-content {
+  font-size: 14px;
+  color: #aaa;
+  line-height: 1.6;
+}
+
+.confirm-content p {
+  margin: 0 0 12px;
+}
+
+.confirm-content ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.confirm-content li {
+  margin-bottom: 4px;
+}
+
+.confirm-warning {
+  color: #F5A623;
+  font-weight: 500;
+}
+
+.confirm-question {
+  color: #888;
+  font-size: 13px;
+  margin-top: 16px !important;
+}
+
+/* 差異顯示 */
+.diff-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.diff-label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.diff-values {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.diff-arrow {
+  color: #555;
+}
+
+.diff-old {
+  background: rgba(230, 57, 70, 0.15);
+  color: #E63946;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  text-decoration: line-through;
+}
+
+.diff-new {
+  background: rgba(229, 165, 0, 0.15);
+  color: #E5A500;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.diff-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diff-text .diff-old,
+.diff-text .diff-new {
+  padding: 8px 12px;
+  border-radius: 6px;
+  line-height: 1.5;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.diff-text .diff-old::before {
+  content: '舊：';
+  opacity: 0.7;
+}
+
+.diff-text .diff-new::before {
+  content: '新：';
+  opacity: 0.7;
+}
+
+/* 按鈕區 */
+.confirm-modal-actions {
+  display: flex;
+  gap: 10px;
+  padding: 0 24px 20px;
+}
+
+.confirm-modal-cancel {
+  flex: 1;
+  padding: 12px 16px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #888;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-modal-cancel:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #aaa;
+}
+
+.confirm-modal-confirm {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-modal-confirm-warning {
+  background: linear-gradient(135deg, #F5A623 0%, #E09000 100%);
+  color: #000;
+}
+
+.confirm-modal-confirm-danger {
+  background: linear-gradient(135deg, #E63946 0%, #C62828 100%);
+  color: #fff;
+}
+
+.confirm-modal-confirm-info {
+  background: linear-gradient(135deg, #E5A500 0%, #B8860B 100%);
+  color: #000;
+}
+
+.confirm-modal-confirm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 /* ========== View Modal ========== */
 .view-modal-overlay {
   background: rgba(0, 0, 0, 0.95);
@@ -1526,6 +1766,7 @@ body.light-mode .view-edit-btn:hover {
 
   .social-filters {
     padding: 10px 12px;
+    top: 52px; /* 手機版 header 較矮 */
   }
 
   .social-filters .filter-row {
@@ -1680,5 +1921,475 @@ body.light-mode .view-edit-btn:hover {
   .social-content.list .archive-thumb {
     width: 80px;
     min-width: 80px;
+  }
+}
+
+/* ========== 含影片篩選按鈕 ========== */
+.filter-video-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-video-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.filter-video-btn.active {
+  background: rgba(247, 119, 55, 0.15);
+  color: #F77737;
+  border-color: rgba(247, 119, 55, 0.4);
+}
+
+.filter-video-btn span {
+  display: none;
+}
+
+@media (min-width: 500px) {
+  .filter-video-btn span {
+    display: inline;
+  }
+}
+
+/* ========== 勾選模式 ========== */
+
+/* 勾選模式按鈕 */
+.select-mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.select-mode-btn.active {
+  background: rgba(229, 165, 0, 0.2);
+  color: #E5A500;
+}
+
+/* 全選按鈕 */
+.select-all-btn {
+  margin-left: 12px;
+  padding: 4px 12px;
+  border: 1px solid rgba(229, 165, 0, 0.4);
+  border-radius: 4px;
+  background: transparent;
+  color: #E5A500;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select-all-btn:hover {
+  background: rgba(229, 165, 0, 0.15);
+}
+
+/* 卡片勾選框 */
+.card-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card-checkbox:hover {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+}
+
+.archive-card.selected .card-checkbox {
+  background: rgba(229, 165, 0, 0.9);
+  color: #000;
+}
+
+/* 選取狀態的卡片 */
+.archive-card.selected {
+  outline: 2px solid #E5A500;
+  outline-offset: -2px;
+}
+
+.archive-card.selected .archive-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(229, 165, 0, 0.1);
+  pointer-events: none;
+}
+
+/* 批次操作列 */
+.batch-action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: rgba(20, 20, 20, 0.98);
+  border-top: 1px solid rgba(229, 165, 0, 0.3);
+  backdrop-filter: blur(20px);
+  z-index: 200;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.batch-count {
+  font-size: 14px;
+  color: #E5A500;
+  font-weight: 500;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.batch-cancel-btn {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: #aaa;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.batch-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.batch-sync-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #E5A500 0%, #B8860B 100%);
+  color: #000;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.batch-sync-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(229, 165, 0, 0.3);
+}
+
+.batch-sync-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.batch-sync-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* 取消同步按鈕 */
+.batch-stop-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #E63946 0%, #C62828 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.batch-stop-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+}
+
+/* 有批次操作列時增加底部空間 */
+.social-archive:has(.batch-action-bar) {
+  padding-bottom: 80px;
+}
+
+/* 響應式調整 */
+@media (max-width: 480px) {
+  .batch-action-bar {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .batch-actions {
+    width: 100%;
+  }
+
+  .batch-cancel-btn,
+  .batch-sync-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ===== 壞圖檢查相關樣式 ===== */
+
+/* 壞圖篩選按鈕 */
+.filter-broken-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #777;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-broken-btn:hover {
+  border-color: rgba(230, 57, 70, 0.5);
+  color: #E63946;
+}
+
+.filter-broken-btn.active {
+  background: rgba(230, 57, 70, 0.2);
+  border-color: #E63946;
+  color: #E63946;
+}
+
+.filter-broken-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.filter-broken-btn .mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(230, 57, 70, 0.3);
+  border-top-color: #E63946;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* 卡片上的壞圖警示標記 */
+.archive-thumb .broken-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #E63946;
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(230, 57, 70, 0.4);
+}
+
+/* 編輯模式中的壞圖標記 */
+.media-preview.broken {
+  border: 2px solid #E63946 !important;
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.broken-image-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: #E63946;
+  color: #fff;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.media-preview.broken::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 5px,
+    rgba(230, 57, 70, 0.1) 5px,
+    rgba(230, 57, 70, 0.1) 10px
+  );
+  pointer-events: none;
+}
+
+/* ===== 貼文左右切換（桌面版在兩側） ===== */
+
+/* 讓 view-modal-overlay 變成 flex 容器 */
+.view-modal-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* 左右兩側的導航按鈕 */
+.post-nav-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: rgba(30, 30, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.post-nav-side:hover:not(:disabled) {
+  background: rgba(229, 165, 0, 0.2);
+  border-color: #E5A500;
+  color: #E5A500;
+  transform: scale(1.05);
+}
+
+.post-nav-side:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+/* 頂部位置指示器（在 modal 外面） */
+.post-nav-indicator {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  color: #999;
+  background: rgba(20, 20, 20, 0.9);
+  padding: 6px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 9010;
+  backdrop-filter: blur(10px);
+}
+
+/* 同步按鈕 */
+.view-sync-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(229, 165, 0, 0.15);
+  border: 1px solid rgba(229, 165, 0, 0.4);
+  color: #E5A500;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-sync-btn:hover:not(:disabled) {
+  background: rgba(229, 165, 0, 0.25);
+  border-color: #E5A500;
+}
+
+.view-sync-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.view-sync-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* 響應式：小螢幕時左右按鈕縮小並貼近 */
+@media (max-width: 768px) {
+  .view-modal-overlay {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .post-nav-side {
+    width: 36px;
+    height: 36px;
+  }
+
+  .post-nav-side svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .post-nav-indicator {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+}
+
+/* 更小螢幕時隱藏左右按鈕，改用底部固定列 */
+@media (max-width: 480px) {
+  .post-nav-side {
+    display: none;
+  }
+
+  /* 底部固定導航列 */
+  .view-modal-overlay::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    pointer-events: none;
   }
 }

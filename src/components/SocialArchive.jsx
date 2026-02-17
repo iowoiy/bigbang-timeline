@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, X, Image, Film, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play } from 'lucide-react'
+import { Plus, X, Image, Film, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
 import './SocialArchive.css'
@@ -166,8 +166,15 @@ export default function SocialArchive({ me, onBack }) {
   // 篩選
   const [filterMember, setFilterMember] = useState('all')
   const [filterType, setFilterType] = useState('all')
+  const [filterHasVideo, setFilterHasVideo] = useState(false) // 只顯示含影片的
+  const [filterBrokenImages, setFilterBrokenImages] = useState(false) // 只顯示有壞圖的
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState('grid') // grid | list
+
+  // 壞圖檢查
+  const [brokenImageMap, setBrokenImageMap] = useState({}) // { archiveId: [brokenIndexes] }
+  const [checkingBroken, setCheckingBroken] = useState(false)
+  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 })
 
   // 新增/編輯 Modal
   const [showModal, setShowModal] = useState(false)
@@ -188,6 +195,17 @@ export default function SocialArchive({ me, onBack }) {
   const [viewingItem, setViewingItem] = useState(null)
   const [viewingMediaIndex, setViewingMediaIndex] = useState(0)
 
+  // 勾選模式
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [batchSyncing, setBatchSyncing] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 })
+  const [currentSyncingId, setCurrentSyncingId] = useState(null) // 目前正在同步的項目 ID
+  const batchCancelRef = useRef(false) // 用來取消批次同步
+
+  // 確認 Modal
+  const [confirmModal, setConfirmModal] = useState(null)
+
   // 載入資料
   useEffect(() => {
     loadArchives()
@@ -196,13 +214,7 @@ export default function SocialArchive({ me, onBack }) {
   async function loadArchives() {
     setLoading(true)
     try {
-      // 先嘗試從 localStorage 載入
-      const cached = localStorage.getItem('socialArchives')
-      if (cached) {
-        setArchives(JSON.parse(cached))
-      }
-
-      // 從 JSONBin 載入（如果有設定）
+      // 從 JSONBin 載入
       if (config.SOCIAL_BIN_ID) {
         const res = await fetch(`${SOCIAL_JSONBIN_URL}/latest`, {
           headers: { 'X-Master-Key': config.API_KEY }
@@ -211,7 +223,6 @@ export default function SocialArchive({ me, onBack }) {
           const data = await res.json()
           if (data.record?.archives) {
             setArchives(data.record.archives)
-            localStorage.setItem('socialArchives', JSON.stringify(data.record.archives))
           }
         }
       }
@@ -226,10 +237,7 @@ export default function SocialArchive({ me, onBack }) {
   async function saveArchives(newArchives) {
     setSaving(true)
     try {
-      // 存到 localStorage
-      localStorage.setItem('socialArchives', JSON.stringify(newArchives))
-
-      // 存到 JSONBin（如果有設定）
+      // 存到 JSONBin
       if (config.SOCIAL_BIN_ID) {
         await fetch(SOCIAL_JSONBIN_URL, {
           method: 'PUT',
@@ -256,17 +264,128 @@ export default function SocialArchive({ me, onBack }) {
     setTimeout(() => setToast(null), 2500)
   }
 
+  // 顯示確認 Modal（Promise-based）
+  function showConfirm({ title, content, type = 'warning', confirmText = '確定', cancelText = '取消' }) {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        title,
+        content,
+        type,
+        confirmText,
+        cancelText,
+        onConfirm: () => { setConfirmModal(null); resolve(true) },
+        onCancel: () => { setConfirmModal(null); resolve(false) }
+      })
+    })
+  }
+
+  // 檢查貼文是否含有影片
+  function hasVideo(item) {
+    return item.media?.some(m => m.type === 'video')
+  }
+
+  // 檢查貼文是否有壞圖
+  function hasBrokenImages(item) {
+    return brokenImageMap[item.id]?.length > 0
+  }
+
+  // 檢查單張圖片是否壞掉（用 fetch HEAD 請求）
+  async function checkImageUrl(url) {
+    if (!url) return true // 沒有 URL 視為壞的
+    try {
+      const res = await fetch(url, { method: 'HEAD', mode: 'no-cors' })
+      // no-cors 模式下無法讀取 status，但如果完全無法連線會拋出錯誤
+      return true // 假設可連線
+    } catch {
+      return false
+    }
+  }
+
+  // 用 Image 物件檢查圖片是否可載入（更準確）
+  function checkImageLoadable(url) {
+    return new Promise(resolve => {
+      if (!url) {
+        resolve(false)
+        return
+      }
+      const img = new window.Image()
+      img.onload = () => resolve(true)
+      img.onerror = () => resolve(false)
+      // 設定超時
+      const timeout = setTimeout(() => {
+        img.src = ''
+        resolve(false)
+      }, 10000) // 10 秒超時
+      img.onload = () => {
+        clearTimeout(timeout)
+        resolve(true)
+      }
+      img.onerror = () => {
+        clearTimeout(timeout)
+        resolve(false)
+      }
+      img.src = url
+    })
+  }
+
+  // 檢查所有圖片
+  async function checkAllBrokenImages() {
+    setCheckingBroken(true)
+    setCheckProgress({ current: 0, total: archives.length })
+
+    const newBrokenMap = {}
+    let checkedCount = 0
+
+    for (const item of archives) {
+      const brokenIndexes = []
+
+      if (item.media?.length > 0) {
+        for (let i = 0; i < item.media.length; i++) {
+          const m = item.media[i]
+          // 檢查圖片（影片只檢查縮圖）
+          const urlToCheck = m.type === 'video' ? m.thumbnail : m.url
+
+          if (urlToCheck) {
+            const isOk = await checkImageLoadable(urlToCheck)
+            if (!isOk) {
+              brokenIndexes.push(i)
+            }
+          }
+        }
+      }
+
+      if (brokenIndexes.length > 0) {
+        newBrokenMap[item.id] = brokenIndexes
+      }
+
+      checkedCount++
+      setCheckProgress({ current: checkedCount, total: archives.length })
+    }
+
+    setBrokenImageMap(newBrokenMap)
+    setCheckingBroken(false)
+
+    const totalBroken = Object.keys(newBrokenMap).length
+    if (totalBroken > 0) {
+      showToast(`檢查完成：${totalBroken} 筆有壞圖`, 'error')
+    } else {
+      showToast('檢查完成：沒有發現壞圖 ✅')
+    }
+  }
+
   // 篩選後的資料
   const filteredArchives = useMemo(() => {
     return archives
       .filter(item => {
         if (filterMember !== 'all' && item.member !== filterMember) return false
         if (filterType !== 'all' && item.type !== filterType) return false
+        if (filterHasVideo && !hasVideo(item)) return false
+        if (filterBrokenImages && !hasBrokenImages(item)) return false
         if (searchText && !item.caption?.toLowerCase().includes(searchText.toLowerCase())) return false
         return true
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-  }, [archives, filterMember, filterType, searchText])
+  }, [archives, filterMember, filterType, filterHasVideo, filterBrokenImages, searchText, brokenImageMap])
 
   // 開啟新增 Modal
   function openAddModal() {
@@ -304,6 +423,206 @@ export default function SocialArchive({ me, onBack }) {
   function openViewModal(item) {
     setViewingItem(item)
     setViewingMediaIndex(0)
+  }
+
+  // 切換到上一則/下一則貼文
+  function goToPrevPost() {
+    const currentIndex = filteredArchives.findIndex(a => a.id === viewingItem?.id)
+    if (currentIndex > 0) {
+      setViewingItem(filteredArchives[currentIndex - 1])
+      setViewingMediaIndex(0)
+    }
+  }
+
+  function goToNextPost() {
+    const currentIndex = filteredArchives.findIndex(a => a.id === viewingItem?.id)
+    if (currentIndex < filteredArchives.length - 1) {
+      setViewingItem(filteredArchives[currentIndex + 1])
+      setViewingMediaIndex(0)
+    }
+  }
+
+  // 取得目前貼文在列表中的位置
+  function getCurrentPostIndex() {
+    return filteredArchives.findIndex(a => a.id === viewingItem?.id)
+  }
+
+  // 單筆同步抓取狀態（改用 Set 追蹤多個同時同步的項目）
+  const [syncingIds, setSyncingIds] = useState(new Set())
+
+  // 檢查某個項目是否正在同步
+  function isItemSyncing(itemId) {
+    return syncingIds.has(itemId)
+  }
+
+  // 單筆同步抓取（檢視模式中使用）
+  async function handleSingleSync() {
+    if (!viewingItem?.igUrl) {
+      showToast('此貼文沒有 IG 連結', 'error')
+      return
+    }
+
+    // 檢查是否已經在同步
+    if (isItemSyncing(viewingItem.id)) {
+      showToast('此貼文正在同步中...', 'info')
+      return
+    }
+
+    // 記錄要同步的項目（即使離開 modal 也能繼續）
+    const itemToSync = { ...viewingItem }
+    const itemId = viewingItem.id
+
+    // 加入同步中列表
+    setSyncingIds(prev => new Set(prev).add(itemId))
+
+    try {
+      const data = await fetchIGData(itemToSync.igUrl)
+
+      // 檢查抓取是否成功
+      if (!data.success || !data.media?.length) {
+        // 抓取失敗或資料為空，詢問是否覆蓋
+        const confirmOverwrite = await showConfirm({
+          title: '⚠️ 抓取失敗',
+          type: 'warning',
+          confirmText: '清空媒體',
+          cancelText: '取消',
+          content: (
+            <div className="confirm-content">
+              <p>可能原因：</p>
+              <ul>
+                <li>IG 貼文已被刪除</li>
+                <li>IG API 暫時無法存取</li>
+                <li>網路連線問題</li>
+              </ul>
+              <p className="confirm-warning">是否仍要清空此貼文的媒體資料？</p>
+            </div>
+          )
+        })
+        if (!confirmOverwrite) {
+          setSyncingIds(prev => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          })
+          return
+        }
+      } else {
+        // 抓取成功，檢查內容是否有變化
+        const oldMediaCount = itemToSync.media?.length || 0
+        const newMediaCount = data.media?.length || 0
+        const oldCaption = (itemToSync.caption || '').trim()
+        const newCaption = (data.caption || '').trim()
+
+        // 比較圖片數量和內容
+        const mediaCountChanged = oldMediaCount !== newMediaCount
+        const captionChanged = oldCaption !== newCaption && newCaption !== ''
+
+        // 如果有變化，顯示確認對話框
+        if (mediaCountChanged || captionChanged) {
+          const oldPreview = oldCaption.substring(0, 80) + (oldCaption.length > 80 ? '...' : '')
+          const newPreview = newCaption.substring(0, 80) + (newCaption.length > 80 ? '...' : '')
+
+          const confirmOverwrite = await showConfirm({
+            title: '📝 資料變更確認',
+            type: 'info',
+            confirmText: '覆蓋',
+            cancelText: '取消',
+            content: (
+              <div className="confirm-content">
+                <p>抓取到的資料與現有資料不同：</p>
+                {mediaCountChanged && (
+                  <div className="diff-item">
+                    <span className="diff-label">📷 媒體數量</span>
+                    <div className="diff-values">
+                      <span className="diff-old">{oldMediaCount} 張</span>
+                      <span className="diff-arrow">→</span>
+                      <span className="diff-new">{newMediaCount} 張</span>
+                    </div>
+                  </div>
+                )}
+                {captionChanged && (
+                  <div className="diff-item">
+                    <span className="diff-label">📝 內容</span>
+                    <div className="diff-text">
+                      <div className="diff-old">{oldPreview || '(空)'}</div>
+                      <div className="diff-new">{newPreview}</div>
+                    </div>
+                  </div>
+                )}
+                <p className="confirm-question">確定要覆蓋嗎？</p>
+              </div>
+            )
+          })
+          if (!confirmOverwrite) {
+            setSyncingIds(prev => {
+              const next = new Set(prev)
+              next.delete(itemId)
+              return next
+            })
+            showToast('已取消同步')
+            return
+          }
+        }
+      }
+
+      // 更新資料（這裡開始是背景執行，即使離開也會繼續）
+      showToast('同步中，上傳圖片到備份伺服器...', 'info')
+
+      const newMedia = data.media?.length > 0
+        ? await uploadMediaList(data.media)
+        : []
+
+      const updatedItem = {
+        ...itemToSync,
+        media: newMedia,
+        caption: data.caption || itemToSync.caption,
+        updatedAt: Date.now()
+      }
+
+      // 更新 archives（用最新的 archives 狀態）
+      setArchives(prevArchives => {
+        const newArchives = prevArchives.map(a =>
+          a.id === itemId ? updatedItem : a
+        )
+        // 存到 JSONBin
+        if (config.SOCIAL_BIN_ID) {
+          fetch(SOCIAL_JSONBIN_URL, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Master-Key': config.API_KEY
+            },
+            body: JSON.stringify({ archives: newArchives, updatedAt: Date.now() })
+          }).catch(err => console.warn('JSONBin 儲存失敗:', err))
+        }
+        return newArchives
+      })
+
+      // 如果還在看同一則貼文，更新 viewingItem
+      setViewingItem(prev => {
+        if (prev?.id === itemId) {
+          return updatedItem
+        }
+        return prev
+      })
+      setViewingMediaIndex(0)
+
+      if (newMedia.length > 0) {
+        showToast(`✅ 同步完成：${newMedia.length} 個媒體`)
+      } else {
+        showToast('已清空媒體資料', 'info')
+      }
+    } catch (err) {
+      console.error('同步失敗:', err)
+      showToast('❌ 同步失敗：' + err.message, 'error')
+    } finally {
+      // 從同步中列表移除
+      setSyncingIds(prev => {
+        const next = new Set(prev)
+        next.delete(itemId)
+        return next
+      })
+    }
   }
 
   // 從檢視切換到編輯
@@ -572,7 +891,18 @@ export default function SocialArchive({ me, onBack }) {
     // 檢查是否有正在上傳的圖片
     const stillUploading = formData.media.some(m => m.uploading)
     if (stillUploading) {
-      const confirmSave = confirm('還有圖片正在上傳中，確定要現在儲存嗎？\n（未完成上傳的圖片可能無法正常顯示）')
+      const confirmSave = await showConfirm({
+        title: '⚠️ 上傳未完成',
+        type: 'warning',
+        confirmText: '仍要儲存',
+        cancelText: '等待上傳',
+        content: (
+          <div className="confirm-content">
+            <p>還有圖片正在上傳中，確定要現在儲存嗎？</p>
+            <p className="confirm-warning">未完成上傳的圖片可能無法正常顯示</p>
+          </div>
+        )
+      })
       if (!confirmSave) return
     }
 
@@ -610,9 +940,244 @@ export default function SocialArchive({ me, onBack }) {
 
   // 刪除
   async function handleDelete(id) {
-    if (!confirm('確定要刪除這筆備份嗎？')) return
+    const confirmDelete = await showConfirm({
+      title: '🗑️ 刪除確認',
+      type: 'danger',
+      confirmText: '刪除',
+      cancelText: '取消',
+      content: (
+        <div className="confirm-content">
+          <p>確定要刪除這筆備份嗎？</p>
+          <p className="confirm-warning">此操作無法復原</p>
+        </div>
+      )
+    })
+    if (!confirmDelete) return
     const newArchives = archives.filter(a => a.id !== id)
     await saveArchives(newArchives)
+  }
+
+  // ===== 勾選模式 =====
+
+  // 切換單筆選取
+  function toggleSelect(id) {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  // 全選/取消全選（只選取目前篩選結果）
+  function toggleSelectAll() {
+    if (selectedIds.length === filteredArchives.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(filteredArchives.map(a => a.id))
+    }
+  }
+
+  // 上傳媒體列表（用於批次同步，完整重新上傳）
+  // ImgBB 上傳成功就回傳，Cloudinary 在背景上傳
+  async function uploadMediaList(mediaList) {
+    const result = []
+    const cloudinaryTasks = [] // 背景上傳任務
+
+    for (const m of mediaList) {
+      if (m.type === 'image') {
+        try {
+          // 先上傳 ImgBB（必要）
+          const imgbbUrl = await uploadUrlToImgBB(m.url)
+          const mediaItem = {
+            url: imgbbUrl,
+            type: 'image'
+          }
+          result.push(mediaItem)
+
+          // Cloudinary 背景上傳（非阻塞）
+          const itemIndex = result.length - 1
+          cloudinaryTasks.push(
+            uploadToCloudinary(m.url).then(cloudinaryUrl => {
+              if (cloudinaryUrl) {
+                result[itemIndex].backupUrl = cloudinaryUrl
+              }
+            }).catch(err => console.warn('Cloudinary 背景上傳失敗:', err))
+          )
+        } catch (err) {
+          console.warn('圖片上傳失敗:', err)
+          result.push({ url: m.url, type: 'image' })
+        }
+      } else if (m.type === 'video') {
+        // 影片保留原始 URL，只上傳縮圖
+        const videoItem = { url: m.url, type: 'video' }
+        if (m.thumbnail) {
+          try {
+            // 先上傳 ImgBB
+            const imgbbUrl = await uploadUrlToImgBB(m.thumbnail)
+            videoItem.thumbnail = imgbbUrl
+
+            // Cloudinary 背景上傳
+            cloudinaryTasks.push(
+              uploadToCloudinary(m.thumbnail).then(cloudinaryUrl => {
+                if (cloudinaryUrl) {
+                  videoItem.thumbnailBackupUrl = cloudinaryUrl
+                }
+              }).catch(err => console.warn('Cloudinary 縮圖背景上傳失敗:', err))
+            )
+          } catch (err) {
+            console.warn('縮圖上傳失敗:', err)
+            videoItem.thumbnail = m.thumbnail
+          }
+        }
+        result.push(videoItem)
+      }
+    }
+
+    // 背景執行 Cloudinary 上傳（不等待）
+    if (cloudinaryTasks.length > 0) {
+      Promise.all(cloudinaryTasks).then(() => {
+        console.log('✅ Cloudinary 背景上傳完成')
+      })
+    }
+
+    return result
+  }
+
+  // 合併媒體列表（只更新影片 URL，保留現有 thumbnail）
+  function mergeMediaWithVideoOnly(existingMedia, newMedia) {
+    // 建立一個映射：根據 index 或類型配對
+    const result = existingMedia.map((existing, i) => {
+      const newItem = newMedia[i]
+
+      if (existing.type === 'video' && newItem?.type === 'video') {
+        // 影片：只更新 URL，保留現有的 thumbnail
+        return {
+          ...existing,
+          url: newItem.url, // 使用新的影片 URL
+          // 保留現有的 thumbnail 和 thumbnailBackupUrl
+        }
+      } else if (existing.type === 'image') {
+        // 圖片：保留現有的，不更新
+        return existing
+      }
+      return existing
+    })
+    return result
+  }
+
+  // 取消批次同步
+  function cancelBatchSync() {
+    batchCancelRef.current = true
+    showToast('正在取消同步...', 'info')
+  }
+
+  // 批次同步抓取
+  async function handleBatchSync() {
+    const selected = archives.filter(a => selectedIds.includes(a.id) && a.igUrl)
+    if (selected.length === 0) {
+      showToast('沒有可同步的項目（需有 IG 連結）', 'error')
+      return
+    }
+
+    // 如果是「含影片」篩選模式，只更新影片 URL
+    const videoOnlyMode = filterHasVideo
+
+    batchCancelRef.current = false // 重置取消狀態
+    setBatchSyncing(true)
+    setBatchProgress({ current: 0, total: selected.length })
+
+    let successCount = 0
+
+    for (const item of selected) {
+      // 檢查是否已取消
+      if (batchCancelRef.current) {
+        break
+      }
+
+      // 設定目前正在同步的項目
+      setCurrentSyncingId(item.id)
+      await new Promise(resolve => setTimeout(resolve, 0)) // 讓 UI 更新
+
+      try {
+        const data = await fetchIGData(item.igUrl)
+
+        // 再次檢查是否已取消（抓取 IG 後）
+        if (batchCancelRef.current) {
+          break
+        }
+
+        if (data.success && data.media?.length > 0) {
+          let updatedItem
+          if (videoOnlyMode) {
+            // 只更新影片 URL，保留現有 thumbnail
+            const mergedMedia = mergeMediaWithVideoOnly(item.media, data.media)
+            updatedItem = {
+              ...item,
+              media: mergedMedia,
+              updatedAt: Date.now()
+            }
+            console.log(`✅ ${item.id} 影片 URL 已更新（保留 thumbnail）`)
+          } else {
+            // 完整重新上傳（原本的行為）
+            const newMedia = await uploadMediaList(data.media)
+
+            // 再次檢查是否已取消（上傳後）
+            if (batchCancelRef.current) {
+              break
+            }
+
+            updatedItem = {
+              ...item,
+              media: newMedia,
+              caption: data.caption || item.caption,
+              updatedAt: Date.now()
+            }
+          }
+
+          // 即時更新畫面（每完成一筆就更新）
+          setArchives(prev => prev.map(a => a.id === item.id ? updatedItem : a))
+          successCount++
+
+          // 強制讓出執行緒，讓 React 有機會更新 UI
+          await new Promise(resolve => setTimeout(resolve, 0))
+        }
+      } catch (err) {
+        console.warn(`同步 ${item.id} 失敗:`, err)
+      }
+      setBatchProgress(p => ({ ...p, current: p.current + 1 }))
+
+      // 每筆處理完也讓出執行緒
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+
+    // 儲存已完成的部分到 JSONBin
+    if (successCount > 0) {
+      setArchives(prev => {
+        if (config.SOCIAL_BIN_ID) {
+          fetch(SOCIAL_JSONBIN_URL, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Master-Key': config.API_KEY
+            },
+            body: JSON.stringify({ archives: prev, updatedAt: Date.now() })
+          }).catch(err => console.warn('JSONBin 儲存失敗:', err))
+        }
+        return prev
+      })
+    }
+
+    const wasCancelled = batchCancelRef.current
+    setCurrentSyncingId(null) // 清除同步中的項目
+    setBatchSyncing(false)
+    setSelectMode(false)
+    setSelectedIds([])
+
+    if (wasCancelled) {
+      showToast(`已取消同步（已完成 ${successCount} 筆）`, 'info')
+    } else if (videoOnlyMode) {
+      showToast(`影片同步完成：${successCount}/${selected.length} 筆成功`)
+    } else {
+      showToast(`同步完成：${successCount}/${selected.length} 筆成功`)
+    }
   }
 
   // ===== Render =====
@@ -664,6 +1229,42 @@ export default function SocialArchive({ me, onBack }) {
             ))}
           </select>
 
+          {/* 含影片篩選 */}
+          <button
+            className={`filter-video-btn ${filterHasVideo ? 'active' : ''}`}
+            onClick={() => setFilterHasVideo(!filterHasVideo)}
+            title="只顯示含影片的貼文"
+          >
+            <Film size={16} />
+            <span>影片</span>
+          </button>
+
+          {/* 壞圖篩選 */}
+          <button
+            className={`filter-broken-btn ${filterBrokenImages ? 'active' : ''}`}
+            onClick={() => {
+              if (Object.keys(brokenImageMap).length === 0 && !checkingBroken) {
+                // 還沒檢查過，先執行檢查
+                checkAllBrokenImages()
+              }
+              setFilterBrokenImages(!filterBrokenImages)
+            }}
+            title="檢查並篩選壞圖"
+            disabled={checkingBroken}
+          >
+            {checkingBroken ? (
+              <>
+                <span className="mini-spinner"></span>
+                <span>{checkProgress.current}/{checkProgress.total}</span>
+              </>
+            ) : (
+              <>
+                <ImageOff size={16} />
+                <span>壞圖{Object.keys(brokenImageMap).length > 0 ? ` (${Object.keys(brokenImageMap).length})` : ''}</span>
+              </>
+            )}
+          </button>
+
           {/* 搜尋 */}
           <div className="search-box">
             <Search size={16} />
@@ -690,10 +1291,27 @@ export default function SocialArchive({ me, onBack }) {
               <List size={16} />
             </button>
           </div>
+
+          {/* 勾選模式 */}
+          <button
+            className={`select-mode-btn ${selectMode ? 'active' : ''}`}
+            onClick={() => {
+              setSelectMode(!selectMode)
+              setSelectedIds([])
+            }}
+            title="勾選模式"
+          >
+            <CheckSquare size={16} />
+          </button>
         </div>
 
         <div className="filter-stats">
           共 {filteredArchives.length} 筆備份
+          {selectMode && filteredArchives.length > 0 && (
+            <button className="select-all-btn" onClick={toggleSelectAll}>
+              {selectedIds.length === filteredArchives.length ? '取消全選' : '全選'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -709,9 +1327,18 @@ export default function SocialArchive({ me, onBack }) {
           filteredArchives.map(item => (
             <div
               key={item.id}
-              className="archive-card"
-              onClick={() => openViewModal(item)}
+              className={`archive-card ${selectMode && selectedIds.includes(item.id) ? 'selected' : ''}`}
+              onClick={() => selectMode ? toggleSelect(item.id) : openViewModal(item)}
             >
+              {/* 勾選框 */}
+              {selectMode && (
+                <div
+                  className="card-checkbox"
+                  onClick={(e) => { e.stopPropagation(); toggleSelect(item.id) }}
+                >
+                  {selectedIds.includes(item.id) ? <CheckSquare size={20} /> : <Square size={20} />}
+                </div>
+              )}
               {/* 縮圖 */}
               <div className="archive-thumb">
                 {item.media?.[0] ? (
@@ -747,6 +1374,20 @@ export default function SocialArchive({ me, onBack }) {
                 >
                   {POST_TYPES.find(t => t.id === item.type)?.icon}
                 </span>
+                {/* 壞圖警示 */}
+                {brokenImageMap[item.id]?.length > 0 && (
+                  <span className="broken-badge" title={`${brokenImageMap[item.id].length} 張圖片損壞`}>
+                    <ImageOff size={14} />
+                    {brokenImageMap[item.id].length}
+                  </span>
+                )}
+                {/* 同步中 Loading 覆蓋層（支援單則同步 syncingIds 和批次同步 currentSyncingId） */}
+                {(syncingIds.has(item.id) || currentSyncingId === item.id) && (
+                  <div className="syncing-overlay">
+                    <RefreshCw size={24} className="spinning" />
+                    <span>同步中...</span>
+                  </div>
+                )}
               </div>
 
               {/* 資訊 */}
@@ -772,6 +1413,21 @@ export default function SocialArchive({ me, onBack }) {
       {/* View Modal */}
       {viewingItem && (
         <div className="modal-overlay view-modal-overlay" onClick={() => setViewingItem(null)}>
+          {/* 頂部：貼文位置指示（放在 modal 外面） */}
+          <div className="post-nav-indicator" onClick={e => e.stopPropagation()}>
+            {getCurrentPostIndex() + 1} / {filteredArchives.length}
+          </div>
+
+          {/* 左側：上一則按鈕 */}
+          <button
+            className="post-nav-side prev"
+            onClick={(e) => { e.stopPropagation(); goToPrevPost() }}
+            disabled={getCurrentPostIndex() <= 0}
+            title="上一則"
+          >
+            <ChevronLeft size={32} />
+          </button>
+
           <div className="view-modal" onClick={e => e.stopPropagation()}>
             {/* 關閉按鈕 */}
             <button className="view-close-btn" onClick={() => setViewingItem(null)}>
@@ -865,14 +1521,25 @@ export default function SocialArchive({ me, onBack }) {
 
               <div className="view-actions">
                 {viewingItem.igUrl && (
-                  <a
-                    href={viewingItem.igUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="view-link-btn"
-                  >
-                    <ExternalLink size={16} /> 開啟 IG
-                  </a>
+                  <>
+                    <a
+                      href={viewingItem.igUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="view-link-btn"
+                    >
+                      <ExternalLink size={16} /> 開啟 IG
+                    </a>
+                    <button
+                      className="view-sync-btn"
+                      onClick={handleSingleSync}
+                      disabled={isItemSyncing(viewingItem.id)}
+                      title="重新抓取 IG 資料"
+                    >
+                      <RefreshCw size={16} className={isItemSyncing(viewingItem.id) ? 'spinning' : ''} />
+                      {isItemSyncing(viewingItem.id) ? '同步中...' : '同步'}
+                    </button>
+                  </>
                 )}
                 <button className="view-edit-btn" onClick={switchToEdit}>
                   ✏️ 編輯
@@ -880,6 +1547,16 @@ export default function SocialArchive({ me, onBack }) {
               </div>
             </div>
           </div>
+
+          {/* 右側：下一則按鈕 */}
+          <button
+            className="post-nav-side next"
+            onClick={(e) => { e.stopPropagation(); goToNextPost() }}
+            disabled={getCurrentPostIndex() >= filteredArchives.length - 1}
+            title="下一則"
+          >
+            <ChevronRight size={32} />
+          </button>
         </div>
       )}
 
@@ -974,38 +1651,47 @@ export default function SocialArchive({ me, onBack }) {
                   )}
                 </label>
                 <div className="media-upload-area">
-                  {formData.media.map((m, i) => (
-                    <div key={i} className={`media-preview ${m.uploading ? 'uploading' : ''} ${m.uploadFailed ? 'failed' : ''}`}>
-                      {m.type === 'video' ? (
-                        m.thumbnail ? (
-                          // 有縮圖
-                          <div className="video-preview-img">
-                            <img src={m.thumbnail} alt="" />
-                            <Play size={16} className="play-icon" />
-                          </div>
+                  {formData.media.map((m, i) => {
+                    // 檢查這張圖是否在壞圖列表中
+                    const isBroken = editingItem && brokenImageMap[editingItem.id]?.includes(i)
+                    return (
+                      <div key={i} className={`media-preview ${m.uploading ? 'uploading' : ''} ${m.uploadFailed ? 'failed' : ''} ${isBroken ? 'broken' : ''}`}>
+                        {m.type === 'video' ? (
+                          m.thumbnail ? (
+                            // 有縮圖
+                            <div className="video-preview-img">
+                              <img src={m.thumbnail} alt="" />
+                              <Play size={16} className="play-icon" />
+                            </div>
+                          ) : (
+                            // 沒縮圖，用影片自動生成
+                            <div className="video-preview-auto">
+                              <video src={m.url} muted preload="metadata" />
+                              <Play size={16} className="play-icon" />
+                            </div>
+                          )
                         ) : (
-                          // 沒縮圖，用影片自動生成
-                          <div className="video-preview-auto">
-                            <video src={m.url} muted preload="metadata" />
-                            <Play size={16} className="play-icon" />
+                          <img src={m.url} alt="" />
+                        )}
+                        {m.uploading && (
+                          <div className="upload-overlay">
+                            <div className="mini-spinner"></div>
                           </div>
-                        )
-                      ) : (
-                        <img src={m.url} alt="" />
-                      )}
-                      {m.uploading && (
-                        <div className="upload-overlay">
-                          <div className="mini-spinner"></div>
-                        </div>
-                      )}
-                      {m.uploadFailed && (
-                        <div className="upload-failed-badge" title="上傳失敗，將使用原始連結">⚠️</div>
-                      )}
-                      <button className="remove-media" onClick={() => removeMedia(i)}>
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
+                        )}
+                        {m.uploadFailed && (
+                          <div className="upload-failed-badge" title="上傳失敗，將使用原始連結">⚠️</div>
+                        )}
+                        {isBroken && (
+                          <div className="broken-image-badge" title="此圖片已損壞，請重新上傳">
+                            <ImageOff size={14} />
+                          </div>
+                        )}
+                        <button className="remove-media" onClick={() => removeMedia(i)}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )
+                  })}
                   <label className="upload-btn">
                     <input
                       type="file"
@@ -1114,11 +1800,62 @@ export default function SocialArchive({ me, onBack }) {
         </div>
       )}
 
+      {/* 批次操作列 */}
+      {selectMode && selectedIds.length > 0 && (
+        <div className="batch-action-bar">
+          <span className="batch-count">已選取 {selectedIds.length} 筆</span>
+          <div className="batch-actions">
+            {!batchSyncing && (
+              <button className="batch-cancel-btn" onClick={() => setSelectedIds([])}>
+                取消選取
+              </button>
+            )}
+            {batchSyncing ? (
+              <button
+                className="batch-stop-btn"
+                onClick={cancelBatchSync}
+              >
+                <X size={16} />
+                取消同步 ({batchProgress.current}/{batchProgress.total})
+              </button>
+            ) : (
+              <button
+                className="batch-sync-btn"
+                onClick={handleBatchSync}
+              >
+                <RefreshCw size={16} />
+                同步抓取
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
       {toast && (
         <div className={`toast ${toast.type}`}>
           {toast.type === 'error' ? <AlertCircle size={16} /> : <Check size={16} />}
           {toast.msg}
+        </div>
+      )}
+
+      {/* 確認 Modal */}
+      {confirmModal && (
+        <div className="confirm-modal-overlay" onClick={confirmModal.onCancel}>
+          <div className={`confirm-modal confirm-modal-${confirmModal.type}`} onClick={e => e.stopPropagation()}>
+            <h3 className="confirm-modal-title">{confirmModal.title}</h3>
+            <div className="confirm-modal-body">
+              {confirmModal.content}
+            </div>
+            <div className="confirm-modal-actions">
+              <button className="confirm-modal-cancel" onClick={confirmModal.onCancel}>
+                {confirmModal.cancelText}
+              </button>
+              <button className={`confirm-modal-confirm confirm-modal-confirm-${confirmModal.type}`} onClick={confirmModal.onConfirm}>
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

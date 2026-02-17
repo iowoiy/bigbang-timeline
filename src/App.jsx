@@ -437,6 +437,19 @@ export default function App() {
 
   // Save event
   const saveEvent = () => {
+    // editLog 只保留「新增」和「最後編輯」
+    let newEditLog
+    if (modal.mode === 'new') {
+      // 新增：只有一筆「新增」紀錄
+      newEditLog = [{ author: me, action: '新增', ts: Date.now() }]
+    } else {
+      // 編輯：保留最初的「新增」，加上最新的「編輯」
+      const createLog = form.editLog.find(log => log.action === '新增')
+      newEditLog = createLog
+        ? [createLog, { author: me, action: '編輯', ts: Date.now() }]
+        : [{ author: me, action: '編輯', ts: Date.now() }]
+    }
+
     const parsed = {
       id: form.id,
       year: parseInt(form.year) || 2025,
@@ -450,7 +463,7 @@ export default function App() {
       links: form.links,
       notes: form.notes,
       media: form.media,
-      editLog: [...form.editLog, { author: me, action: modal.mode === 'new' ? '新增' : '編輯', ts: Date.now() }]
+      editLog: newEditLog
     }
     let next
     if (modal.mode === 'new') {
@@ -626,12 +639,17 @@ export default function App() {
   const saveSupplements = (updates) => {
     const ev = events.find(e => e.id === modal?.eventId)
     if (!ev) return
+    // editLog 只保留「新增」和「最後編輯」
+    const createLog = (ev.editLog || []).find(log => log.action === '新增')
+    const newEditLog = createLog
+      ? [createLog, { author: me, action: '補充', ts: Date.now() }]
+      : [{ author: me, action: '補充', ts: Date.now() }]
     const updated = {
       ...ev,
       links: updates.links || form.links,
       notes: updates.notes || form.notes,
       media: updates.media || form.media,
-      editLog: [...(ev.editLog || []), { author: me, action: '補充', ts: Date.now() }]
+      editLog: newEditLog
     }
     persist(events.map(e => e.id === updated.id ? updated : e))
     setForm(f => ({
@@ -648,10 +666,15 @@ export default function App() {
     const ev = events.find(e => e.id === eventId)
     if (!ev) return
     const newNote = { text: inlineNote.trim(), author: me, ts: Date.now() }
+    // editLog 只保留「新增」和「最後編輯」
+    const createLog = (ev.editLog || []).find(log => log.action === '新增')
+    const newEditLog = createLog
+      ? [createLog, { author: me, action: '留言', ts: Date.now() }]
+      : [{ author: me, action: '留言', ts: Date.now() }]
     const updated = {
       ...ev,
       notes: [...(ev.notes || []), newNote],
-      editLog: [...(ev.editLog || []), { author: me, action: '留言', ts: Date.now() }]
+      editLog: newEditLog
     }
     persist(events.map(e => e.id === updated.id ? updated : e))
     setInlineNote('')
@@ -675,10 +698,15 @@ export default function App() {
     const ev = events.find(e => e.id === eventId)
     if (!ev) return
     const newNotes = ev.notes.filter((_, i) => i !== noteIndex)
+    // editLog 只保留「新增」和「最後編輯」
+    const createLog = (ev.editLog || []).find(log => log.action === '新增')
+    const newEditLog = createLog
+      ? [createLog, { author: me, action: '刪除留言', ts: Date.now() }]
+      : [{ author: me, action: '刪除留言', ts: Date.now() }]
     const updated = {
       ...ev,
       notes: newNotes,
-      editLog: [...(ev.editLog || []), { author: me, action: '刪除留言', ts: Date.now() }]
+      editLog: newEditLog
     }
     persist(events.map(e => e.id === updated.id ? updated : e))
     flash('已刪除留言', 'success')
@@ -745,11 +773,9 @@ export default function App() {
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
-          {/* 社群備份按鈕（暫時隱藏）
           <button onClick={() => setCurrentPage('social')} className="social-btn" title="社群備份">
             <Instagram size={16} />
           </button>
-          */}
           <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
             {lightMode ? <Moon size={16} /> : <Sun size={16} />}
           </button>
