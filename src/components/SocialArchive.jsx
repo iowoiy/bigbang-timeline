@@ -1239,8 +1239,8 @@ export default function SocialArchive({ me, onBack }) {
             <span>影片</span>
           </button>
 
-          {/* 壞圖篩選（僅 martin 可見） */}
-          {me === 'martin' && (
+          {/* 壞圖篩選（僅管理員可見） */}
+          {me && (
             <button
               className={`filter-broken-btn ${filterBrokenImages ? 'active' : ''}`}
               onClick={() => {
@@ -1294,8 +1294,8 @@ export default function SocialArchive({ me, onBack }) {
             </button>
           </div>
 
-          {/* 勾選模式（僅 martin 可見） */}
-          {me === 'martin' && (
+          {/* 勾選模式（僅管理員可見） */}
+          {me && (
             <button
               className={`select-mode-btn ${selectMode ? 'active' : ''}`}
               onClick={() => {

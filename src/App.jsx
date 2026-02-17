@@ -224,7 +224,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [me, setMe] = useState(() => localStorage.getItem('me') || null)
+  const me = false // 手動改成 true 來啟用管理功能
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
   const [modal, setModal] = useState(null)
@@ -275,13 +275,6 @@ export default function App() {
     document.body.classList.toggle('light-mode', lightMode)
     localStorage.setItem('lightMode', lightMode)
   }, [lightMode])
-
-  // 記住使用者身份
-  useEffect(() => {
-    if (me) {
-      localStorage.setItem('me', me)
-    }
-  }, [me])
 
   // 監聽滾動顯示回到頂部按鈕
   useEffect(() => {
@@ -780,9 +773,11 @@ export default function App() {
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
-          <button onClick={() => setCurrentPage('social')} className="social-btn" title="社群備份">
-            <Instagram size={16} />
-          </button>
+          {me && (
+            <button onClick={() => setCurrentPage('social')} className="social-btn" title="社群備份">
+              <Instagram size={16} />
+            </button>
+          )}
           <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
             {lightMode ? <Moon size={16} /> : <Sun size={16} />}
           </button>
