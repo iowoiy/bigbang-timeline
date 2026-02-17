@@ -2393,3 +2393,19 @@ body.light-mode .view-edit-btn:hover {
     pointer-events: none;
   }
 }
+
+/* ===== 無限滾動載入更多 ===== */
+.load-more-sentinel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #888;
+  font-size: 13px;
+  grid-column: 1 / -1; /* 佔滿整行 */
+}
+
+.load-more-sentinel .spinning {
+  animation: spin 1s linear infinite;
+}

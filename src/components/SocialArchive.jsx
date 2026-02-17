@@ -31,13 +31,6 @@ const IG_ACCOUNTS = {
   '全員': 'bigbangofficial',
 }
 
-// 取得成員對應的 JSONBin URL
-function getMemberBinUrl(member) {
-  const binId = config.SOCIAL_BINS?.[member]
-  if (!binId) return null
-  return `https://api.jsonbin.io/v3/b/${binId}`
-}
-
 function getMemberColor(name) {
   return MEMBERS.find(m => m.name === name)?.color || '#E5A500'
 }
@@ -211,6 +204,10 @@ export default function SocialArchive({ isAdmin, onBack }) {
   // 確認 Modal
   const [confirmModal, setConfirmModal] = useState(null)
 
+  // 無限滾動
+  const [displayCount, setDisplayCount] = useState(20)
+  const loadMoreRef = useRef(null)
+
   // 載入資料
   useEffect(() => {
     loadArchives()
@@ -219,32 +216,12 @@ export default function SocialArchive({ isAdmin, onBack }) {
   async function loadArchives() {
     setLoading(true)
     try {
-      // 從各成員的 JSONBin 載入並合併
-      const allArchives = []
-      const members = Object.keys(config.SOCIAL_BINS || {})
-
-      for (const member of members) {
-        const binUrl = getMemberBinUrl(member)
-        if (!binUrl) continue
-
-        try {
-          const res = await fetch(`${binUrl}/latest`, {
-            headers: { 'X-Master-Key': config.API_KEY }
-          })
-          if (res.ok) {
-            const data = await res.json()
-            if (data.record?.archives) {
-              allArchives.push(...data.record.archives)
-            }
-          }
-        } catch (err) {
-          console.warn(`載入 ${member} 資料失敗`, err)
-        }
-      }
-
-      // 按更新時間排序（新的在前）
-      allArchives.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
-      setArchives(allArchives)
+      // 從 D1 API 載入所有社群備份
+      const res = await fetch(`${config.API_URL}/social`)
+      if (!res.ok) throw new Error('載入失敗')
+      const data = await res.json()
+      // 資料已按 updated_at DESC 排序
+      setArchives(data)
     } catch (err) {
       console.error('載入失敗', err)
       showToast('載入失敗', 'error')
@@ -253,57 +230,48 @@ export default function SocialArchive({ isAdmin, onBack }) {
     }
   }
 
-  // 儲存單一成員的資料到對應的 bin
-  async function saveMemberArchives(member, memberArchives) {
-    const binUrl = getMemberBinUrl(member)
-    if (!binUrl) {
-      console.warn(`找不到 ${member} 的 bin`)
-      return false
-    }
-
-    try {
-      const res = await fetch(binUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': config.API_KEY
-        },
-        body: JSON.stringify({ archives: memberArchives, updatedAt: Date.now() })
-      })
-      return res.ok
-    } catch (err) {
-      console.error(`儲存 ${member} 資料失敗`, err)
-      return false
-    }
+  // 建立新的社群備份
+  async function createArchive(item) {
+    const res = await fetch(`${config.API_URL}/social`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': config.API_KEY
+      },
+      body: JSON.stringify(item)
+    })
+    if (!res.ok) throw new Error('建立失敗')
+    return res.json()
   }
 
+  // 更新社群備份
+  async function updateArchive(item) {
+    const res = await fetch(`${config.API_URL}/social/${item.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': config.API_KEY
+      },
+      body: JSON.stringify(item)
+    })
+    if (!res.ok) throw new Error('更新失敗')
+    return res.json()
+  }
+
+  // 刪除社群備份
+  async function deleteArchiveById(id) {
+    const res = await fetch(`${config.API_URL}/social/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-API-Key': config.API_KEY }
+    })
+    if (!res.ok) throw new Error('刪除失敗')
+    return res.json()
+  }
+
+  // 儲存（相容舊邏輯，用於批次更新後重新載入）
   async function saveArchives(newArchives) {
-    setSaving(true)
-    try {
-      // 按成員分組儲存
-      const memberGroups = {}
-      for (const archive of newArchives) {
-        const member = archive.member || '全員'
-        if (!memberGroups[member]) {
-          memberGroups[member] = []
-        }
-        memberGroups[member].push(archive)
-      }
-
-      // 儲存每個成員的資料
-      const savePromises = Object.entries(memberGroups).map(([member, archives]) =>
-        saveMemberArchives(member, archives)
-      )
-      await Promise.all(savePromises)
-
-      setArchives(newArchives)
-      showToast('已儲存')
-    } catch (err) {
-      console.error('儲存失敗', err)
-      showToast('儲存失敗', 'error')
-    } finally {
-      setSaving(false)
-    }
+    setArchives(newArchives)
+    showToast('已儲存')
   }
 
   function showToast(msg, type = 'success') {
@@ -461,6 +429,34 @@ export default function SocialArchive({ isAdmin, onBack }) {
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date))
   }, [archives, filterMember, filterType, filterHasVideo, filterBrokenImages, searchText, brokenImageMap])
+
+  // 實際顯示的資料（無限滾動）
+  const displayedArchives = useMemo(() => {
+    return filteredArchives.slice(0, displayCount)
+  }, [filteredArchives, displayCount])
+
+  // 當 filter 改變時，重設顯示數量
+  useEffect(() => {
+    setDisplayCount(20)
+  }, [filterMember, filterType, filterHasVideo, filterBrokenImages, searchText])
+
+  // 無限滾動 - IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && displayCount < filteredArchives.length) {
+          setDisplayCount(prev => Math.min(prev + 20, filteredArchives.length))
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [displayCount, filteredArchives.length])
 
   // 開啟新增 Modal
   function openAddModal() {
@@ -659,11 +655,9 @@ export default function SocialArchive({ isAdmin, onBack }) {
         const newArchives = prevArchives.map(a =>
           a.id === itemId ? updatedItem : a
         )
-        // 存到對應成員的 JSONBin
-        const member = updatedItem.member || '全員'
-        const memberArchives = newArchives.filter(a => a.member === member)
-        saveMemberArchives(member, memberArchives)
-          .catch(err => console.warn('JSONBin 儲存失敗:', err))
+        // 存到 D1
+        updateArchive(updatedItem)
+          .catch(err => console.warn('D1 儲存失敗:', err))
         return newArchives
       })
 
@@ -995,15 +989,25 @@ export default function SocialArchive({ isAdmin, onBack }) {
       updatedAt: Date.now(),
     }
 
-    let newArchives
-    if (editingItem) {
-      newArchives = archives.map(a => a.id === editingItem.id ? item : a)
-    } else {
-      newArchives = [item, ...archives]
+    setSaving(true)
+    try {
+      if (editingItem) {
+        // 更新現有
+        await updateArchive(item)
+        setArchives(archives.map(a => a.id === editingItem.id ? item : a))
+      } else {
+        // 新增
+        await createArchive(item)
+        setArchives([item, ...archives])
+      }
+      showToast('已儲存')
+      setShowModal(false)
+    } catch (err) {
+      console.error('儲存失敗', err)
+      showToast('儲存失敗', 'error')
+    } finally {
+      setSaving(false)
     }
-
-    await saveArchives(newArchives)
-    setShowModal(false)
   }
 
   // 刪除
@@ -1021,8 +1025,15 @@ export default function SocialArchive({ isAdmin, onBack }) {
       )
     })
     if (!confirmDelete) return
-    const newArchives = archives.filter(a => a.id !== id)
-    await saveArchives(newArchives)
+
+    try {
+      await deleteArchiveById(id)
+      setArchives(archives.filter(a => a.id !== id))
+      showToast('已刪除')
+    } catch (err) {
+      console.error('刪除失敗', err)
+      showToast('刪除失敗', 'error')
+    }
   }
 
   // ===== 勾選模式 =====
@@ -1283,26 +1294,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
       await new Promise(resolve => setTimeout(resolve, 0))
     }
 
-    // 儲存已完成的部分到各成員的 JSONBin
-    if (successCount > 0) {
-      setArchives(prev => {
-        // 按成員分組儲存
-        const memberGroups = {}
-        for (const archive of prev) {
-          const member = archive.member || '全員'
-          if (!memberGroups[member]) {
-            memberGroups[member] = []
-          }
-          memberGroups[member].push(archive)
-        }
-        // 儲存有更新的成員資料
-        Object.entries(memberGroups).forEach(([member, archives]) => {
-          saveMemberArchives(member, archives)
-            .catch(err => console.warn(`JSONBin 儲存 ${member} 失敗:`, err))
-        })
-        return prev
-      })
-    }
+    // 批次同步完成（每筆在處理時已經單獨存到 D1）
 
     const wasCancelled = batchCancelRef.current
     setCurrentSyncingId(null) // 清除同步中的項目
@@ -1467,7 +1459,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
             <button onClick={openAddModal}>新增第一筆</button>
           </div>
         ) : (
-          filteredArchives.map(item => (
+          displayedArchives.map(item => (
             <div
               key={item.id}
               className={`archive-card ${selectMode && selectedIds.includes(item.id) ? 'selected' : ''}`}
@@ -1489,7 +1481,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                     item.media[0].thumbnail ? (
                       // 有縮圖就顯示縮圖
                       <div className="video-thumb-img">
-                        <img src={item.media[0].thumbnail} alt="" />
+                        <img src={item.media[0].thumbnail} alt="" loading="lazy" />
                         <Play size={24} className="play-overlay" />
                       </div>
                     ) : (
@@ -1500,7 +1492,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                       </div>
                     )
                   ) : (
-                    <img src={item.media[0].url} alt="" />
+                    <img src={item.media[0].url} alt="" loading="lazy" />
                   )
                 ) : (
                   <div className="no-thumb">
@@ -1550,6 +1542,14 @@ export default function SocialArchive({ isAdmin, onBack }) {
               </div>
             </div>
           ))
+        )}
+
+        {/* 載入更多 sentinel */}
+        {displayCount < filteredArchives.length && (
+          <div ref={loadMoreRef} className="load-more-sentinel">
+            <RefreshCw size={20} className="spinning" />
+            <span>載入更多... ({displayCount}/{filteredArchives.length})</span>
+          </div>
         )}
       </div>
 

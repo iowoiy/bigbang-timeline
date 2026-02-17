@@ -1,0 +1,49 @@
+-- BIGBANG Timeline D1 Database Schema
+-- 時間軸 + 社群備份資料表
+
+-- =====================================================
+-- 時間軸事件
+-- =====================================================
+CREATE TABLE IF NOT EXISTS events (
+  id TEXT PRIMARY KEY,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL,
+  day INTEGER DEFAULT 1,
+  title TEXT NOT NULL,
+  description TEXT,
+  categories TEXT DEFAULT '[]',    -- JSON array: ["music", "milestone"]
+  members TEXT DEFAULT '[]',       -- JSON array: ["G-Dragon", "T.O.P"]
+  links TEXT DEFAULT '[]',         -- JSON array: [{url, label, author, ts}]
+  notes TEXT DEFAULT '[]',         -- JSON array: [{text, author, ts}]
+  media TEXT DEFAULT '[]',         -- JSON array: [{url, backupUrl, author, ts}]
+  edit_log TEXT DEFAULT '[]',      -- JSON array: [{author, action, ts}]
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+-- =====================================================
+-- 社群備份
+-- =====================================================
+CREATE TABLE IF NOT EXISTS social_archives (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL CHECK(type IN ('post', 'story', 'reels')),
+  member TEXT NOT NULL,
+  date TEXT NOT NULL,
+  time TEXT,
+  ig_url TEXT,
+  caption TEXT,
+  media TEXT DEFAULT '[]',         -- JSON array: [{url, type, backupUrl, thumbnail, thumbnailBackupUrl}]
+  notes TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+-- =====================================================
+-- 索引
+-- =====================================================
+CREATE INDEX IF NOT EXISTS idx_events_year ON events(year);
+CREATE INDEX IF NOT EXISTS idx_events_year_month ON events(year, month);
+CREATE INDEX IF NOT EXISTS idx_social_member ON social_archives(member);
+CREATE INDEX IF NOT EXISTS idx_social_date ON social_archives(date);
+CREATE INDEX IF NOT EXISTS idx_social_type ON social_archives(type);
+CREATE INDEX IF NOT EXISTS idx_social_updated ON social_archives(updated_at);

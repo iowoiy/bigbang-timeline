@@ -6,7 +6,7 @@ import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './
 import { DEFAULT_EVENTS } from './data/defaultEvents'
 import SocialArchive from './components/SocialArchive'
 
-const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.BIN_ID}`
+// D1 API URL (已從 JSONBin 遷移)
 
 // BIGBANG 成員列表與顏色
 const MEMBERS = [
@@ -136,9 +136,8 @@ function getVideoThumbnail(url) {
 // ========== API 函式 ==========
 async function loadEvents() {
   try {
-    const res = await fetch(`${JSONBIN_URL}/latest`, {
-      headers: { 'X-Master-Key': config.API_KEY, 'X-Bin-Meta': 'false' }
-    })
+    const res = await fetch(`${config.API_URL}/events`)
+    if (!res.ok) throw new Error('載入失敗')
     const data = await res.json()
     if (Array.isArray(data) && data.length > 0) return data
     return DEFAULT_EVENTS
@@ -148,16 +147,42 @@ async function loadEvents() {
   }
 }
 
-async function saveEvents(events) {
-  const res = await fetch(JSONBIN_URL, {
+// 新增事件
+async function createEvent(event) {
+  const res = await fetch(`${config.API_URL}/events`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': config.API_KEY
+    },
+    body: JSON.stringify(event)
+  })
+  if (!res.ok) throw new Error('Create failed')
+  return res.json()
+}
+
+// 更新事件
+async function updateEvent(event) {
+  const res = await fetch(`${config.API_URL}/events/${event.id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'X-Master-Key': config.API_KEY
+      'X-API-Key': config.API_KEY
     },
-    body: JSON.stringify(events)
+    body: JSON.stringify(event)
   })
-  if (!res.ok) throw new Error('Save failed')
+  if (!res.ok) throw new Error('Update failed')
+  return res.json()
+}
+
+// 刪除事件
+async function deleteEventById(id) {
+  const res = await fetch(`${config.API_URL}/events/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-API-Key': config.API_KEY }
+  })
+  if (!res.ok) throw new Error('Delete failed')
+  return res.json()
 }
 
 // ========== 媒體顯示元件 ==========
@@ -298,15 +323,37 @@ export default function App() {
     }
   }, [modal])
 
-  // 儲存資料
-  const persist = async (newEvents) => {
+  // 儲存單筆事件（新增或更新）
+  const persistEvent = async (event, isNew = false) => {
     setSaving(true)
     try {
-      await saveEvents(newEvents)
-      setEvents(newEvents)
+      if (isNew) {
+        await createEvent(event)
+      } else {
+        await updateEvent(event)
+      }
+      // 更新本地狀態
+      if (isNew) {
+        setEvents(prev => [...prev, event])
+      } else {
+        setEvents(prev => prev.map(e => e.id === event.id ? event : e))
+      }
       flash('已儲存（所有人可見）', 'success')
     } catch {
       flash('儲存失敗，請稍後重試', 'error')
+    }
+    setSaving(false)
+  }
+
+  // 刪除單筆事件
+  const persistDelete = async (id) => {
+    setSaving(true)
+    try {
+      await deleteEventById(id)
+      setEvents(prev => prev.filter(e => e.id !== id))
+      flash('已刪除', 'success')
+    } catch {
+      flash('刪除失敗，請稍後重試', 'error')
     }
     setSaving(false)
   }
@@ -466,18 +513,12 @@ export default function App() {
       media: form.media,
       editLog: newEditLog
     }
-    let next
-    if (modal.mode === 'new') {
-      next = [...events, parsed]
-    } else {
-      next = events.map(e => e.id === parsed.id ? parsed : e)
-    }
-    persist(next)
+    persistEvent(parsed, modal.mode === 'new')
     closeModal()
   }
 
   const deleteEvent = () => {
-    persist(events.filter(e => e.id !== form.id))
+    persistDelete(form.id)
     closeModal()
   }
 
@@ -652,7 +693,7 @@ export default function App() {
       media: updates.media || form.media,
       editLog: newEditLog
     }
-    persist(events.map(e => e.id === updated.id ? updated : e))
+    persistEvent(updated, false)
     setForm(f => ({
       ...f,
       links: updates.links || f.links,
@@ -677,7 +718,7 @@ export default function App() {
       notes: [...(ev.notes || []), newNote],
       editLog: newEditLog
     }
-    persist(events.map(e => e.id === updated.id ? updated : e))
+    persistEvent(updated, false)
     setInlineNote('')
     flash('留言已送出', 'success')
   }
@@ -709,7 +750,7 @@ export default function App() {
       notes: newNotes,
       editLog: newEditLog
     }
-    persist(events.map(e => e.id === updated.id ? updated : e))
+    persistEvent(updated, false)
     flash('已刪除留言', 'success')
   }
 
