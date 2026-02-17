@@ -987,17 +987,33 @@ export default function SocialArchive({ isAdmin, onBack }) {
       const existing = existingMedia[i] // 對應位置的現有媒體
 
       if (m.type === 'image') {
-        // 檢查現有備份是否可用（同位置、已備份到 ImgBB）
-        if (existing?.type === 'image' && existing?.url?.includes('i.ibb.co')) {
-          const isAlive = await checkImageLoadable(existing.url)
-          if (isAlive) {
-            // 現有備份可用，直接沿用
-            console.log(`✅ 圖片 ${i + 1} 備份可用，跳過上傳`)
-            result.push({ ...existing })
-            continue
-          } else {
-            console.log(`⚠️ 圖片 ${i + 1} 備份已失效，重新上傳`)
+        // 檢查現有備份是否可用
+        if (existing?.type === 'image') {
+          // 先檢查主要備份（ImgBB）
+          if (existing?.url?.includes('i.ibb.co')) {
+            const isAlive = await checkImageLoadable(existing.url)
+            if (isAlive) {
+              console.log(`✅ 圖片 ${i + 1} ImgBB 備份可用，跳過上傳`)
+              result.push({ ...existing })
+              continue
+            }
           }
+
+          // ImgBB 壞了，檢查 Cloudinary 備份
+          if (existing?.backupUrl?.includes('cloudinary')) {
+            const isBackupAlive = await checkImageLoadable(existing.backupUrl)
+            if (isBackupAlive) {
+              console.log(`✅ 圖片 ${i + 1} Cloudinary 備份可用，切換使用`)
+              result.push({
+                url: existing.backupUrl, // 用 Cloudinary 當主要 URL
+                type: 'image',
+                backupUrl: existing.backupUrl
+              })
+              continue
+            }
+          }
+
+          console.log(`⚠️ 圖片 ${i + 1} 所有備份都失效，重新上傳`)
         }
 
         // 需要上傳新圖片
@@ -1029,19 +1045,34 @@ export default function SocialArchive({ isAdmin, onBack }) {
 
         if (m.thumbnail) {
           // 檢查現有縮圖備份是否可用
-          if (existing?.type === 'video' && existing?.thumbnail?.includes('i.ibb.co')) {
-            const isAlive = await checkImageLoadable(existing.thumbnail)
-            if (isAlive) {
-              console.log(`✅ 影片 ${i + 1} 縮圖備份可用，跳過上傳`)
-              videoItem.thumbnail = existing.thumbnail
-              if (existing.thumbnailBackupUrl) {
-                videoItem.thumbnailBackupUrl = existing.thumbnailBackupUrl
+          if (existing?.type === 'video') {
+            // 先檢查主要縮圖備份（ImgBB）
+            if (existing?.thumbnail?.includes('i.ibb.co')) {
+              const isAlive = await checkImageLoadable(existing.thumbnail)
+              if (isAlive) {
+                console.log(`✅ 影片 ${i + 1} 縮圖 ImgBB 備份可用，跳過上傳`)
+                videoItem.thumbnail = existing.thumbnail
+                if (existing.thumbnailBackupUrl) {
+                  videoItem.thumbnailBackupUrl = existing.thumbnailBackupUrl
+                }
+                result.push(videoItem)
+                continue
               }
-              result.push(videoItem)
-              continue
-            } else {
-              console.log(`⚠️ 影片 ${i + 1} 縮圖備份已失效，重新上傳`)
             }
+
+            // ImgBB 壞了，檢查 Cloudinary 縮圖備份
+            if (existing?.thumbnailBackupUrl?.includes('cloudinary')) {
+              const isBackupAlive = await checkImageLoadable(existing.thumbnailBackupUrl)
+              if (isBackupAlive) {
+                console.log(`✅ 影片 ${i + 1} 縮圖 Cloudinary 備份可用，切換使用`)
+                videoItem.thumbnail = existing.thumbnailBackupUrl
+                videoItem.thumbnailBackupUrl = existing.thumbnailBackupUrl
+                result.push(videoItem)
+                continue
+              }
+            }
+
+            console.log(`⚠️ 影片 ${i + 1} 縮圖所有備份都失效，重新上傳`)
           }
 
           // 需要上傳新縮圖
