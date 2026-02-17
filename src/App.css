@@ -400,6 +400,27 @@ a {
   background: rgba(212, 175, 55, 0.15);
 }
 
+/* 社群備份按鈕 */
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.social-btn:hover {
+  color: #E1306C;
+  background: rgba(225, 48, 108, 0.15);
+}
+
 /* ========== Filters ========== */
 .filters {
   position: sticky;
@@ -1877,12 +1898,19 @@ body.light-mode .top-bar {
 }
 
 body.light-mode .sync-btn,
-body.light-mode .theme-btn {
+body.light-mode .theme-btn,
+body.light-mode .social-btn {
   color: #666;
 }
 
-body.light-mode .theme-btn {
+body.light-mode .theme-btn,
+body.light-mode .social-btn {
   background: rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode .social-btn:hover {
+  color: #E1306C;
+  background: rgba(225, 48, 108, 0.12);
 }
 
 body.light-mode .theme-btn:hover {

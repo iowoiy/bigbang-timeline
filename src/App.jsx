@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown, Sun, Moon } from 'lucide-react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown, Sun, Moon, Instagram } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
 import { DEFAULT_EVENTS } from './data/defaultEvents'
+import SocialArchive from './components/SocialArchive'
 
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${config.BIN_ID}`
 
@@ -46,6 +47,44 @@ async function uploadToImgBB(file) {
     return data.data.url
   }
   throw new Error('上傳失敗')
+}
+
+// 上傳圖片到 Cloudinary 作為備份
+async function uploadToCloudinary(file) {
+  if (!config.CLOUDINARY_CLOUD_NAME || !config.CLOUDINARY_UPLOAD_PRESET) {
+    console.warn('Cloudinary 未設定，跳過備份')
+    return null
+  }
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('upload_preset', config.CLOUDINARY_UPLOAD_PRESET)
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${config.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      { method: 'POST', body: formData }
+    )
+    const data = await res.json()
+
+    if (data.secure_url) {
+      console.log('✅ Cloudinary 備份成功:', data.secure_url)
+      return data.secure_url
+    }
+    throw new Error(data.error?.message || '上傳失敗')
+  } catch (err) {
+    console.warn('Cloudinary 備份失敗:', err.message)
+    return null
+  }
+}
+
+// 同時上傳到 ImgBB + Cloudinary（雙重備份）
+async function uploadWithBackup(file) {
+  const [imgbbUrl, cloudinaryUrl] = await Promise.all([
+    uploadToImgBB(file),
+    uploadToCloudinary(file)
+  ])
+  return { url: imgbbUrl, backupUrl: cloudinaryUrl }
 }
 
 // 解析影片連結，回傳嵌入資訊
@@ -213,6 +252,7 @@ export default function App() {
   const [imageSlider, setImageSlider] = useState({ open: false, images: [], index: 0 }) // 圖片輪播
   const [touchStart, setTouchStart] = useState(null) // 觸控起始位置
   const [lightMode, setLightMode] = useState(() => localStorage.getItem('lightMode') === 'true') // 淺色模式
+  const [currentPage, setCurrentPage] = useState('timeline') // 頁面切換：'timeline' | 'social'
 
   const fileInputRef = useRef(null)
 
@@ -513,10 +553,10 @@ export default function App() {
 
     for (const file of validFiles) {
       try {
-        const url = await uploadToImgBB(file)
+        const { url, backupUrl } = await uploadWithBackup(file)
         setForm(f => ({
           ...f,
-          media: [...f.media, { url, author: me, ts: Date.now() }]
+          media: [...f.media, { url, backupUrl, author: me, ts: Date.now() }]
         }))
         successCount++
       } catch {
@@ -557,10 +597,10 @@ export default function App() {
         continue
       }
       try {
-        const url = await uploadToImgBB(file)
+        const { url, backupUrl } = await uploadWithBackup(file)
         setForm(f => ({
           ...f,
-          media: [...f.media, { url, author: me, ts: Date.now() }]
+          media: [...f.media, { url, backupUrl, author: me, ts: Date.now() }]
         }))
         successCount++
       } catch {
@@ -681,6 +721,11 @@ export default function App() {
     )
   }
 
+  // ========== 社群備份頁面 ==========
+  if (currentPage === 'social') {
+    return <SocialArchive me={me} onBack={() => setCurrentPage('timeline')} />
+  }
+
   // ========== 主介面 ==========
   return (
     <div>
@@ -700,6 +745,11 @@ export default function App() {
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
+          {/* 社群備份按鈕（暫時隱藏）
+          <button onClick={() => setCurrentPage('social')} className="social-btn" title="社群備份">
+            <Instagram size={16} />
+          </button>
+          */}
           <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
             {lightMode ? <Moon size={16} /> : <Sun size={16} />}
           </button>
