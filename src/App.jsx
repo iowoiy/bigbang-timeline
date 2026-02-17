@@ -224,7 +224,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [me, setMe] = useState(null)
+  const [me, setMe] = useState(() => localStorage.getItem('me') || null)
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
   const [modal, setModal] = useState(null)
@@ -275,6 +275,13 @@ export default function App() {
     document.body.classList.toggle('light-mode', lightMode)
     localStorage.setItem('lightMode', lightMode)
   }, [lightMode])
+
+  // 記住使用者身份
+  useEffect(() => {
+    if (me) {
+      localStorage.setItem('me', me)
+    }
+  }, [me])
 
   // 監聽滾動顯示回到頂部按鈕
   useEffect(() => {
