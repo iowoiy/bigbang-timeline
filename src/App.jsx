@@ -224,7 +224,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const isAdmin = false // 手動改成 true 來啟用管理功能（IG按鈕、壞圖檢查、勾選模式）
+  const isAdmin = localStorage.getItem('isAdmin') === 'true' // localStorage 設定 isAdmin=true 來啟用管理功能
   const [me, setMe] = useState(null) // 作者身份
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
