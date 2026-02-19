@@ -421,6 +421,87 @@ a {
   background: rgba(225, 48, 108, 0.15);
 }
 
+/* ========== Hamburger Menu ========== */
+.nav-menu-wrapper {
+  position: relative;
+}
+
+.hamburger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hamburger-btn:hover {
+  color: #E5A500;
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.nav-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 199;
+}
+
+.nav-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 160px;
+  background: #1a1a1a;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 10px;
+  padding: 6px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: navMenuIn 0.15s ease-out;
+}
+
+@keyframes navMenuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.nav-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+  text-align: left;
+}
+
+.nav-menu-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+  color: #E5A500;
+}
+
+.nav-menu-item.active {
+  background: rgba(212, 175, 55, 0.15);
+  color: #E5A500;
+  font-weight: 600;
+}
+
 /* ========== Filters ========== */
 .filters {
   position: sticky;
@@ -1899,18 +1980,45 @@ body.light-mode .top-bar {
 
 body.light-mode .sync-btn,
 body.light-mode .theme-btn,
-body.light-mode .social-btn {
+body.light-mode .social-btn,
+body.light-mode .hamburger-btn {
   color: #666;
 }
 
 body.light-mode .theme-btn,
-body.light-mode .social-btn {
+body.light-mode .social-btn,
+body.light-mode .hamburger-btn {
   background: rgba(0, 0, 0, 0.05);
 }
 
 body.light-mode .social-btn:hover {
   color: #E1306C;
   background: rgba(225, 48, 108, 0.12);
+}
+
+body.light-mode .hamburger-btn:hover {
+  color: #B8860B;
+  background: rgba(212, 175, 55, 0.12);
+}
+
+body.light-mode .nav-menu {
+  background: #fff;
+  border-color: rgba(200, 180, 140, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .nav-menu-item {
+  color: #555;
+}
+
+body.light-mode .nav-menu-item:hover {
+  background: rgba(212, 175, 55, 0.08);
+  color: #B8860B;
+}
+
+body.light-mode .nav-menu-item.active {
+  background: rgba(212, 175, 55, 0.12);
+  color: #B8860B;
 }
 
 body.light-mode .theme-btn:hover {

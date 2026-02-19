@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown, Sun, Moon, Instagram } from 'lucide-react'
+import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown, Sun, Moon, Menu } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
 import { DEFAULT_EVENTS } from './data/defaultEvents'
 import SocialArchive from './components/SocialArchive'
+import MembershipArchive from './components/MembershipArchive'
 
 // D1 API URL (已從 JSONBin 遷移)
 
@@ -278,7 +279,8 @@ export default function App() {
   const [imageSlider, setImageSlider] = useState({ open: false, images: [], index: 0 }) // 圖片輪播
   const [touchStart, setTouchStart] = useState(null) // 觸控起始位置
   const [lightMode, setLightMode] = useState(() => localStorage.getItem('lightMode') === 'true') // 淺色模式
-  const [currentPage, setCurrentPage] = useState('timeline') // 頁面切換：'timeline' | 'social'
+  const [currentPage, setCurrentPage] = useState('timeline') // 頁面切換：'timeline' | 'social' | 'membership'
+  const [menuOpen, setMenuOpen] = useState(false) // hamburger menu 開關
 
   const fileInputRef = useRef(null)
 
@@ -809,6 +811,11 @@ export default function App() {
     return <SocialArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} />
   }
 
+  // ========== 會員備份頁面 ==========
+  if (currentPage === 'membership') {
+    return <MembershipArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} />
+  }
+
   // ========== 主介面 ==========
   return (
     <div>
@@ -828,11 +835,27 @@ export default function App() {
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
-          {isAdmin && (
-            <button onClick={() => setCurrentPage('social')} className="social-btn" title="社群備份">
-              <Instagram size={16} />
+          <div className="nav-menu-wrapper">
+            <button onClick={() => setMenuOpen(!menuOpen)} className="hamburger-btn" title="選單">
+              <Menu size={18} />
             </button>
-          )}
+            {menuOpen && (
+              <>
+                <div className="nav-menu-overlay" onClick={() => setMenuOpen(false)} />
+                <div className="nav-menu">
+                  <button className={`nav-menu-item ${currentPage === 'timeline' ? 'active' : ''}`} onClick={() => { setCurrentPage('timeline'); setMenuOpen(false) }}>
+                    <span>📅</span> 時間軸
+                  </button>
+                  <button className={`nav-menu-item ${currentPage === 'social' ? 'active' : ''}`} onClick={() => { setCurrentPage('social'); setMenuOpen(false) }}>
+                    <span>📷</span> 社群備份
+                  </button>
+                  <button className={`nav-menu-item ${currentPage === 'membership' ? 'active' : ''}`} onClick={() => { setCurrentPage('membership'); setMenuOpen(false) }}>
+                    <span>🔒</span> 會員備份
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
             {lightMode ? <Moon size={16} /> : <Sun size={16} />}
           </button>

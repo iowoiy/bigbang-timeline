@@ -11,4 +11,4 @@ database_id = "94da8358-3011-413d-8234-01c47e6c51ee"
 
 # 環境變數（部署後用 wrangler secret put API_KEY 設定）
 [vars]
-ALLOWED_ORIGINS = "https://iowoiy.github.io,http://localhost:5173,http://localhost:5174"
+ALLOWED_ORIGINS = "https://iowoiy.github.io,http://localhost:5173,http://localhost:5174,http://localhost:5177"

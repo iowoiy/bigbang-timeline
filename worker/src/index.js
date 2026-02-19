@@ -84,6 +84,42 @@ export default {
         return await migrateSocialArchives(env.DB, body, corsHeaders)
       }
 
+      // === Membership Archive API ===
+      if (path === '/api/membership' && method === 'GET') {
+        return await getMembershipArchives(env.DB, url.searchParams, corsHeaders)
+      }
+      if (path === '/api/membership' && method === 'POST') {
+        const body = await request.json()
+        return await createMembershipArchive(env.DB, body, corsHeaders)
+      }
+      if (path.match(/^\/api\/membership\/[\w-]+$/) && method === 'PUT') {
+        const id = path.split('/').pop()
+        const body = await request.json()
+        return await updateMembershipArchive(env.DB, id, body, corsHeaders)
+      }
+      if (path.match(/^\/api\/membership\/[\w-]+$/) && method === 'DELETE') {
+        const id = path.split('/').pop()
+        return await deleteMembershipArchive(env.DB, id, corsHeaders)
+      }
+
+      // === b.stage Archive API ===
+      if (path === '/api/bstage' && method === 'GET') {
+        return await getBstageArchives(env.DB, url.searchParams, corsHeaders)
+      }
+      if (path === '/api/bstage' && method === 'POST') {
+        const body = await request.json()
+        return await createBstageArchive(env.DB, body, corsHeaders)
+      }
+      if (path.match(/^\/api\/bstage\/[\w-]+$/) && method === 'PUT') {
+        const id = path.split('/').pop()
+        const body = await request.json()
+        return await updateBstageArchive(env.DB, id, body, corsHeaders)
+      }
+      if (path.match(/^\/api\/bstage\/[\w-]+$/) && method === 'DELETE') {
+        const id = path.split('/').pop()
+        return await deleteBstageArchive(env.DB, id, corsHeaders)
+      }
+
       // === Visitors API ===
       if (path === '/api/visitors' && method === 'POST') {
         const body = await request.json()
@@ -419,6 +455,195 @@ async function migrateSocialArchives(db, data, corsHeaders) {
   }
 
   return jsonResponse({ success: true, migrated, total: archives.length }, 200, corsHeaders)
+}
+
+// =====================================================
+// Membership Archive API（會員備份）
+// =====================================================
+
+async function getMembershipArchives(db, params, corsHeaders) {
+  const member = params.get('member')
+
+  let query = 'SELECT * FROM membership_archives'
+  const conditions = []
+  const bindings = []
+
+  if (member && member !== 'all') {
+    conditions.push('member = ?')
+    bindings.push(member)
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ')
+  }
+  query += ' ORDER BY date DESC, updated_at DESC'
+
+  const stmt = db.prepare(query)
+  const result = bindings.length > 0 ? await stmt.bind(...bindings).all() : await stmt.all()
+
+  const archives = result.results.map(row => ({
+    id: row.id,
+    member: row.member,
+    date: row.date,
+    time: row.time,
+    caption: row.caption,
+    media: JSON.parse(row.media || '[]'),
+    sourceUrl: row.source_url,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }))
+
+  return jsonResponse(archives, 200, corsHeaders)
+}
+
+async function createMembershipArchive(db, data, corsHeaders) {
+  const now = Date.now()
+  const id = data.id || 'mb-' + now
+
+  await db.prepare(`
+    INSERT INTO membership_archives (id, member, date, time, caption, media, source_url, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    data.member,
+    data.date,
+    data.time || null,
+    data.caption || null,
+    JSON.stringify(data.media || []),
+    data.sourceUrl || null,
+    data.notes || null,
+    data.createdAt || now,
+    data.updatedAt || now
+  ).run()
+
+  return jsonResponse({ success: true, id }, 201, corsHeaders)
+}
+
+async function updateMembershipArchive(db, id, data, corsHeaders) {
+  const now = Date.now()
+
+  await db.prepare(`
+    UPDATE membership_archives SET
+      member = ?, date = ?, time = ?, caption = ?,
+      media = ?, source_url = ?, notes = ?, updated_at = ?
+    WHERE id = ?
+  `).bind(
+    data.member,
+    data.date,
+    data.time || null,
+    data.caption || null,
+    JSON.stringify(data.media || []),
+    data.sourceUrl || null,
+    data.notes || null,
+    now,
+    id
+  ).run()
+
+  return jsonResponse({ success: true }, 200, corsHeaders)
+}
+
+async function deleteMembershipArchive(db, id, corsHeaders) {
+  await db.prepare('DELETE FROM membership_archives WHERE id = ?').bind(id).run()
+  return jsonResponse({ success: true }, 200, corsHeaders)
+}
+
+// =====================================================
+// b.stage Archive API
+// =====================================================
+
+async function getBstageArchives(db, params, corsHeaders) {
+  const member = params.get('member')
+
+  let query = 'SELECT * FROM bstage_archives'
+  const conditions = []
+  const bindings = []
+
+  if (member && member !== 'all') {
+    conditions.push('member = ?')
+    bindings.push(member)
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ')
+  }
+  query += ' ORDER BY date DESC, updated_at DESC'
+
+  const stmt = db.prepare(query)
+  const result = bindings.length > 0 ? await stmt.bind(...bindings).all() : await stmt.all()
+
+  const archives = result.results.map(row => ({
+    id: row.id,
+    member: row.member,
+    date: row.date,
+    time: row.time,
+    caption: row.caption,
+    media: JSON.parse(row.media || '[]'),
+    likes: row.likes,
+    comments: row.comments,
+    sourceUrl: row.source_url,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }))
+
+  return jsonResponse(archives, 200, corsHeaders)
+}
+
+async function createBstageArchive(db, data, corsHeaders) {
+  const now = Date.now()
+  const id = data.id || 'b-' + now
+
+  await db.prepare(`
+    INSERT INTO bstage_archives (id, member, date, time, caption, media, likes, comments, source_url, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    data.member,
+    data.date,
+    data.time || null,
+    data.caption || null,
+    JSON.stringify(data.media || []),
+    data.likes || 0,
+    data.comments || 0,
+    data.sourceUrl || null,
+    data.notes || null,
+    data.createdAt || now,
+    data.updatedAt || now
+  ).run()
+
+  return jsonResponse({ success: true, id }, 201, corsHeaders)
+}
+
+async function updateBstageArchive(db, id, data, corsHeaders) {
+  const now = Date.now()
+
+  await db.prepare(`
+    UPDATE bstage_archives SET
+      member = ?, date = ?, time = ?, caption = ?,
+      media = ?, likes = ?, comments = ?, source_url = ?,
+      notes = ?, updated_at = ?
+    WHERE id = ?
+  `).bind(
+    data.member,
+    data.date,
+    data.time || null,
+    data.caption || null,
+    JSON.stringify(data.media || []),
+    data.likes || 0,
+    data.comments || 0,
+    data.sourceUrl || null,
+    data.notes || null,
+    now,
+    id
+  ).run()
+
+  return jsonResponse({ success: true }, 200, corsHeaders)
+}
+
+async function deleteBstageArchive(db, id, corsHeaders) {
+  await db.prepare('DELETE FROM bstage_archives WHERE id = ?').bind(id).run()
+  return jsonResponse({ success: true }, 200, corsHeaders)
 }
 
 // =====================================================

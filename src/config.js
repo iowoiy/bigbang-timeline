@@ -30,6 +30,11 @@ const config = {
   // Cloudinary 備份設定
   CLOUDINARY_CLOUD_NAME: 'dn0jpjoek',
   CLOUDINARY_UPLOAD_PRESET: 'Bigbang-timeline',
+
+  // 會員備份專用設定
+  MEMBERSHIP_IMGBB_API_KEY: '5ba49f2d518646b1d60d3bb5749ffd18',
+  MEMBERSHIP_CLOUDINARY_CLOUD_NAME: 'dqag3qras',
+  MEMBERSHIP_CLOUDINARY_PRESET: 'bigbang-membership',
 }
 
 export default config
