@@ -336,7 +336,15 @@ export default function MembershipArchive({ isAdmin, onBack }) {
     }
 
     const member = site.authorMap[item.author?.id] || site.defaultMember
-    const caption = [item.title, item.description].filter(Boolean).join('\n\n')
+    // 去重：title 和 description 常常相同或包含關係
+    let caption = ''
+    const t = (item.title || '').trim()
+    const d = (item.description || '').trim()
+    if (t && d) {
+      caption = t === d ? t : (d.includes(t) ? d : `${t}\n\n${d}`)
+    } else {
+      caption = t || d
+    }
 
     return {
       id: `mb-bstage-${item.id}`,
@@ -345,7 +353,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
       time: timeStr,
       caption: caption || '',
       images,
-      sourceUrl: `https://${site.domain}/feed/${item.id}`,
+      sourceUrl: `https://${site.domain}/story/feed/${item.typeId || item.id}`,
       notes: videoNote,
       bstageId: item.id,
       paid: item.paid || false,
@@ -883,16 +891,16 @@ export default function MembershipArchive({ isAdmin, onBack }) {
       <header className="membership-header">
         <button className="back-btn" onClick={onBack}>← 返回時間軸</button>
         <h1>🔒 會員備份</h1>
-        {isAdmin && (
-          <div className="header-actions">
+        <div className="header-actions">
+          {isAdmin && (
             <button className="membership-import-btn" onClick={() => setShowImportModal(true)} title="從 b.stage 匯入">
               <Download size={18} />
             </button>
-            <button className="add-btn" onClick={openAddModal} title="新增備份">
-              <Plus size={20} />
-            </button>
-          </div>
-        )}
+          )}
+          <button className="add-btn" onClick={openAddModal} title="新增備份">
+            <Plus size={20} />
+          </button>
+        </div>
       </header>
 
       {/* Filters */}
@@ -1123,11 +1131,9 @@ export default function MembershipArchive({ isAdmin, onBack }) {
                     <ExternalLink size={16} /> 開啟原文
                   </a>
                 )}
-                {isAdmin && (
-                  <button className="view-edit-btn" onClick={switchToEdit}>
-                    ✏️ 編輯
-                  </button>
-                )}
+                <button className="view-edit-btn" onClick={switchToEdit}>
+                  ✏️ 編輯
+                </button>
               </div>
             </div>
           </div>
