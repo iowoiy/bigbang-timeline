@@ -4,6 +4,42 @@ import { Plus, X, Image, ChevronDown, Trash2, ExternalLink, Calendar, Save, Chec
 import config from '../config'
 import './MembershipArchive.css'
 
+// HLS 影片播放元件（支援 .m3u8，動態載入 hls.js）
+function HlsVideo({ src, className }) {
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !src) return
+
+    // Safari 原生支援 HLS
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = src
+      return
+    }
+
+    // Chrome/Firefox：動態載入 hls.js
+    let hls = null
+    import('hls.js').then(({ default: Hls }) => {
+      if (!Hls.isSupported()) { video.src = src; return }
+      hls = new Hls()
+      hls.loadSource(src)
+      hls.attachMedia(video)
+    }).catch(() => { video.src = src })
+
+    return () => { if (hls) hls.destroy() }
+  }, [src])
+
+  return (
+    <video
+      ref={videoRef}
+      controls
+      playsInline
+      className={className}
+    />
+  )
+}
+
 // BIGBANG 成員列表與顏色（不含勝利）
 const MEMBERS = [
   { name: '全員', color: '#E5A500' },
@@ -63,6 +99,7 @@ const BSTAGE_SITES = {
   gdragon: {
     label: 'G-Dragon (gdragon.ai)',
     domain: 'gdragon.ai',
+    mediaPrefix: 'gd',
     authorIds: '67a5e27bc8affa6b2c4b893b%2C677e145d5dba936413e31764',
     defaultMember: 'G-Dragon',
     authorMap: {
@@ -73,6 +110,7 @@ const BSTAGE_SITES = {
   daesung: {
     label: 'Daesung (daesung.bstage.in)',
     domain: 'daesung.bstage.in',
+    mediaPrefix: 'daesung',
     authorIds: '64cb4a2654046402f5bde521',
     defaultMember: '大聲',
     authorMap: {
@@ -82,6 +120,7 @@ const BSTAGE_SITES = {
   taeyang: {
     label: 'Taeyang (taeyang.bstage.in)',
     domain: 'taeyang.bstage.in',
+    mediaPrefix: 'taeyang',
     authorIds: '67361d0527162e668b09c620',
     defaultMember: '太陽',
     authorMap: {
@@ -226,6 +265,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [importProcessProgress, setImportProcessProgress] = useState({ current: 0, total: 0, skipped: 0, success: 0, failed: 0 })
   const [importLog, setImportLog] = useState([])
   const [forceUpdate, setForceUpdate] = useState(false)
+  const [videoOnly, setVideoOnly] = useState(false)
   const importCancelRef = useRef(false)
 
   // 載入資料
@@ -360,7 +400,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       if (mainUrl) images.push({ originalUrl: mainUrl, type: 'image' })
     }
 
-    // 影片：提取縮圖
+    // 影片：縮圖放第一個，影片 URL 放第二個
     let videoNote = ''
     if (item.video) {
       const thumbPaths = item.video.thumbnailPaths || []
@@ -371,8 +411,25 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           break
         }
       }
-      const hlsPath = item.video.hlsPath?.path || item.video.dashPath?.path || ''
-      if (hlsPath) videoNote = `[影片] ${hlsPath}`
+      // 組合完整影片 URL：https://media.static.bstage.in/{mediaPrefix}/media/{videoId}/hls/ori.m3u8
+      const videoId = item.video.id || item.video._id || ''
+      if (videoId) {
+        const videoUrl = `https://media.static.bstage.in/${site.mediaPrefix}/media/${videoId}/hls/ori.m3u8`
+        images.push({ originalUrl: videoUrl, type: 'video' })
+        videoNote = `[影片] ${videoUrl}`
+      } else {
+        const hlsPath = item.video.hlsPath?.path || item.video.dashPath?.path || ''
+        if (hlsPath) {
+          let videoUrl = hlsPath
+          if (!hlsPath.startsWith('http')) {
+            // hlsPath 可能是 /media/{id}/hls/ori.m3u8 或 media/{id}/hls/ori.m3u8
+            const cleanPath = hlsPath.startsWith('/') ? hlsPath.slice(1) : hlsPath
+            videoUrl = `https://media.static.bstage.in/${site.mediaPrefix}/${cleanPath}`
+          }
+          images.push({ originalUrl: videoUrl, type: 'video' })
+          videoNote = `[影片] ${videoUrl}`
+        }
+      }
     }
 
     const member = site.authorMap[item.author?.id] || site.defaultMember
@@ -423,19 +480,39 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       if (importCancelRef.current) break
 
       const item = items[i]
+      const hasVideo = item.images?.some(img => img.type === 'video')
+
+      // 「只更新影片」模式：跳過沒有影片的貼文
+      if (videoOnly && !hasVideo) {
+        setImportProcessProgress(prev => ({
+          ...prev,
+          current: prev.current + 1,
+          skipped: prev.skipped + 1
+        }))
+        addImportLog(`⏭ 跳過（非影片）: ${item.date} ${item.caption?.slice(0, 30) || '(無文字)'}`, 'info')
+        continue
+      }
 
       // 已存在的貼文
       if (existingIds.has(item.id) || existingSourceUrls.has(item.sourceUrl)) {
-        if (forceUpdate) {
-          // 強制更新：不重傳圖片，更新 caption / date / time
+        if (forceUpdate || videoOnly) {
+          // 強制更新：更新 caption / date / time + 影片資訊
           const matchId = existingIds.has(item.id) ? item.id : null
           const existing = latestArchives.find(a => a.id === matchId || a.sourceUrl === item.sourceUrl)
           if (existing) {
             const newCaption = dedupCaption(item.caption)
-            const updated = { ...existing, caption: newCaption, date: item.date, time: item.time, updatedAt: Date.now() }
-            await updateArchive(updated).catch(err => console.warn('更新失敗:', err))
-            setArchives(prev => prev.map(a => a.id === updated.id ? updated : a))
-            addImportLog(`🔄 已更新: ${item.date} ${newCaption?.slice(0, 30) || '(無文字)'}`, 'info')
+            const updateData = { ...existing, caption: newCaption, date: item.date, time: item.time, updatedAt: Date.now() }
+            // videoOnly 模式：同時更新影片和備註
+            if (videoOnly && hasVideo) {
+              // 保留原有圖片，加入/更新影片資源
+              const existingImages = (existing.media || []).filter(m => m.type !== 'video')
+              const newVideos = item.images.filter(img => img.type === 'video').map(img => ({ url: img.originalUrl, type: 'video' }))
+              updateData.media = [...existingImages, ...newVideos]
+              updateData.notes = item.notes || existing.notes
+            }
+            await updateArchive(updateData).catch(err => console.warn('更新失敗:', err))
+            setArchives(prev => prev.map(a => a.id === updateData.id ? updateData : a))
+            addImportLog(`🔄 已更新${hasVideo ? '（含影片）' : ''}: ${item.date} ${newCaption?.slice(0, 30) || '(無文字)'}`, 'info')
           }
         } else {
           addImportLog(`⏭ 跳過（已存在）: ${item.date} ${item.caption?.slice(0, 30) || '(無文字)'}`, 'info')
@@ -449,9 +526,14 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       }
 
       try {
-        // 上傳圖片（ImgBB + Cloudinary 雙備份）
+        // 上傳圖片（ImgBB + Cloudinary 雙備份），影片保留原始 URL
         const uploadedMedia = []
         for (const img of item.images) {
+          // 影片不上傳圖床，直接保留原始 URL
+          if (img.type === 'video') {
+            uploadedMedia.push({ url: img.originalUrl, type: 'video' })
+            continue
+          }
           try {
             const [imgbbUrl, cloudinaryUrl] = await Promise.all([
               uploadUrlToImgBB(img.originalUrl),
@@ -554,6 +636,8 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
       // 轉換
       const transformed = rawItems.map(item => transformBstageItem(item, siteKey))
+      const videoCount = transformed.filter(t => t.images?.some(img => img.type === 'video')).length
+      if (videoCount > 0) addImportLog(`🎬 其中 ${videoCount} 筆含影片`, 'info')
 
       // Phase 2
       await processImportItems(transformed)
@@ -1094,20 +1178,27 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                       onClick={() => openViewModal(item)}
                     >
                       <div className="archive-thumb">
-                        {item.media?.[0] ? (
-                          item.media[0].type === 'youtube' ? (
+                        {(() => {
+                          // 找第一張圖片當縮圖（跳過 video type）
+                          const thumb = item.media?.find(m => m.type !== 'video') || item.media?.[0]
+                          const hasVideo = item.media?.some(m => m.type === 'video')
+                          if (!thumb) return (
+                            <div className="no-thumb">
+                              <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" />
+                            </div>
+                          )
+                          return thumb.type === 'youtube' ? (
                             <div className="video-thumb-img">
-                              <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" width={260} height={260} />
+                              <img src={thumb.thumbnail || getYouTubeThumbnail(thumb.url)} alt="" loading="lazy" width={260} height={260} />
                               <Play size={24} className="play-overlay" />
                             </div>
                           ) : (
-                            <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" width={260} height={260} />
+                            <div className={hasVideo ? 'video-thumb-img' : ''}>
+                              <img src={getThumbUrl(thumb)} alt="" loading="lazy" width={260} height={260} />
+                              {hasVideo && <Play size={24} className="play-overlay" />}
+                            </div>
                           )
-                        ) : (
-                          <div className="no-thumb">
-                            <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" />
-                          </div>
-                        )}
+                        })()}
                         {item.media?.length > 1 && (
                           <span className="media-count">+{item.media.length - 1}</span>
                         )}
@@ -1174,6 +1265,12 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                       allowFullScreen
                       className="view-media view-youtube"
                     />
+                  ) : viewingItem.media[viewingMediaIndex]?.type === 'video' ? (
+                    <HlsVideo
+                      key={`${viewingItem.id}-${viewingMediaIndex}`}
+                      src={viewingItem.media[viewingMediaIndex].url}
+                      className="view-media"
+                    />
                   ) : (
                     <img
                       key={`${viewingItem.id}-${viewingMediaIndex}`}
@@ -1236,10 +1333,23 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                 </div>
               )}
 
-              {viewingItem.notes && (
+              {isAdmin && viewingItem.notes && (
                 <div className="view-notes">
                   <strong>備註：</strong>
-                  <p>{viewingItem.notes}</p>
+                  <p>{(() => {
+                    // 從 sourceUrl 反推 mediaPrefix
+                    const prefix = Object.values(BSTAGE_SITES).find(s => viewingItem.sourceUrl?.includes(s.domain))?.mediaPrefix || ''
+                    return viewingItem.notes.split(/(https?:\/\/[^\s]+|\/media\/[^\s]+)/g).map((part, i) => {
+                      if (/^https?:\/\//.test(part)) {
+                        return <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#D4AF37', wordBreak: 'break-all' }}>{part}</a>
+                      }
+                      if (/^\/media\//.test(part)) {
+                        const fullUrl = `https://media.static.bstage.in/${prefix}${part}`
+                        return <a key={i} href={fullUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#D4AF37', wordBreak: 'break-all' }}>{part}</a>
+                      }
+                      return part
+                    })
+                  })()}</p>
                 </div>
               )}
 
@@ -1573,7 +1683,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                       <br />⚠️ Token 約 30 分鐘過期，每個站台需使用各自的 Token
                     </p>
                   </div>
-                  <div className="form-group" style={{ marginTop: 12 }}>
+                  <div className="form-group" style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                       <input
                         type="checkbox"
@@ -1581,6 +1691,14 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                         onChange={e => setForceUpdate(e.target.checked)}
                       />
                       強制更新已存在的貼文（不重傳圖片，僅更新文字/日期）
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={videoOnly}
+                        onChange={e => setVideoOnly(e.target.checked)}
+                      />
+                      🎬 只處理含影片的貼文（更新影片連結到已存在的貼文）
                     </label>
                   </div>
                 </>

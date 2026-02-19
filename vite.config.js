@@ -12,6 +12,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           icons: ['lucide-react'],
+          hls: ['hls.js'],
         }
       }
     }
