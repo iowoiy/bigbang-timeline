@@ -375,9 +375,19 @@ export default function MembershipArchive({ isAdmin, onBack }) {
     setImportPhase('processing')
     setImportProcessProgress({ current: 0, total: items.length, skipped: 0, success: 0, failed: 0 })
 
-    // 建立去重集合
-    const existingIds = new Set(archives.map(a => a.id))
-    const existingSourceUrls = new Set(archives.map(a => a.sourceUrl).filter(Boolean))
+    // 從 API 重新載入最新資料來建去重集合（避免 state 過期導致重複 INSERT）
+    let latestArchives = archives
+    try {
+      const res = await fetch(`${config.API_URL}/membership`)
+      if (res.ok) {
+        latestArchives = await res.json()
+        setArchives(latestArchives)
+      }
+    } catch (e) {
+      console.warn('重新載入資料失敗，使用現有 state 去重', e)
+    }
+    const existingIds = new Set(latestArchives.map(a => a.id))
+    const existingSourceUrls = new Set(latestArchives.map(a => a.sourceUrl).filter(Boolean))
 
     for (let i = 0; i < items.length; i++) {
       if (importCancelRef.current) break
