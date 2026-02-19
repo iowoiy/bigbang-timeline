@@ -199,6 +199,7 @@
 .social-content-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
@@ -212,7 +213,6 @@
 
 .social-content.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
 }
 
@@ -375,6 +375,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
+  justify-content: space-between;
 }
 
 .archive-meta .member-tag {
@@ -1820,7 +1821,6 @@ body.light-mode .view-edit-btn:hover {
   }
 
   .social-content.grid {
-    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
@@ -1944,7 +1944,7 @@ body.light-mode .view-edit-btn:hover {
 /* 小螢幕 */
 @media (max-width: 380px) {
   .social-content.grid {
-    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .social-content.list .archive-thumb {

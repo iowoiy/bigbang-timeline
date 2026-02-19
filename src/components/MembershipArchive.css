@@ -534,6 +534,7 @@
 .membership-content-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
@@ -547,7 +548,6 @@
 
 .membership-content.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
 }
 
@@ -658,6 +658,20 @@
   font-weight: 500;
 }
 
+.membership-archive .archive-thumb .paid-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ff6b6b;
+  padding: 5px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
 .membership-archive .archive-info {
   padding: 12px 14px;
 }
@@ -674,6 +688,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
+  justify-content: space-between;
 }
 
 .membership-archive .archive-meta .member-tag {
@@ -2161,14 +2176,19 @@ body.light-mode .import-modal .import-close-btn {
   }
 
   .membership-content.grid {
-    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
-  /* Modal 底部彈出 */
+  /* Modal 底部彈出（僅 add/edit modal） */
   .membership-archive .modal-overlay {
     padding: 0;
     align-items: flex-end;
+  }
+
+  /* View modal 保持置中 */
+  .membership-archive .view-modal-overlay {
+    align-items: center;
+    padding: 20px;
   }
 
   .membership-modal {
@@ -2278,7 +2298,7 @@ body.light-mode .import-modal .import-close-btn {
 
 @media (max-width: 380px) {
   .membership-content.grid {
-    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .membership-content.list .archive-thumb {

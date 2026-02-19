@@ -210,7 +210,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   // 無限滾動
   // 虛擬化列表
   const scrollRef = useRef(null)
-  const [columns, setColumns] = useState(3)
+  const [columns, setColumns] = useState(() => window.innerWidth < 500 ? 2 : Math.max(2, Math.floor(Math.min(900, window.innerWidth) / 280)))
 
   // 手動輸入模式
   const [showManualInput, setShowManualInput] = useState(false)
@@ -615,8 +615,11 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     const el = scrollRef.current
     if (!el) return
     const measure = () => {
-      const w = el.clientWidth - 32
-      setColumns(viewMode === 'grid' ? Math.max(2, Math.floor(w / 276)) : 1) // 至少 2 欄
+      if (viewMode !== 'grid') { setColumns(1); return }
+      // 取容器寬度與視窗寬度的較小值，確保手機不會算錯
+      const w = Math.min(el.clientWidth, window.innerWidth)
+      if (w < 500) { setColumns(2); return }
+      setColumns(Math.max(2, Math.floor(w / 280)))
     }
     measure()
     const ro = new ResizeObserver(measure)
@@ -632,6 +635,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     getScrollElement: () => scrollRef.current,
     estimateSize: () => viewMode === 'grid' ? 340 : 120,
     overscan: 3,
+    gap: viewMode === 'grid' ? 16 : 10,
   })
 
   // 開啟新增 Modal
@@ -1107,6 +1111,9 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                         {item.media?.length > 1 && (
                           <span className="media-count">+{item.media.length - 1}</span>
                         )}
+                        {item.paid && (
+                          <span className="paid-overlay"><Lock size={14} /></span>
+                        )}
                       </div>
 
                       <div className="archive-info">
@@ -1117,8 +1124,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                           >
                             {item.member}
                           </span>
-                          {item.paid && <span className="paid-badge">🔒 會員</span>}
-                          <span className="date">{formatDateTime(item.date, item.time)}</span>
+                          <span className="date">{formatDate(item.date)}</span>
                         </div>
                         {item.caption && (
                           <p className="archive-caption">{dedupCaption(item.caption)}</p>
