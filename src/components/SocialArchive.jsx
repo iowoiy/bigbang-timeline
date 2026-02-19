@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Plus, X, Image, Film, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
@@ -187,7 +188,7 @@ async function fetchIGData(url) {
   }
 }
 
-export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
+function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [archives, setArchives] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -237,9 +238,9 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
   // 確認 Modal
   const [confirmModal, setConfirmModal] = useState(null)
 
-  // 無限滾動
-  const [displayCount, setDisplayCount] = useState(20)
-  const loadMoreRef = useRef(null)
+  // 虛擬化列表
+  const scrollRef = useRef(null)
+  const [columns, setColumns] = useState(3)
 
   // 載入資料
   useEffect(() => {
@@ -463,33 +464,29 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
       .sort((a, b) => new Date(b.date) - new Date(a.date))
   }, [archives, filterMember, filterType, filterHasVideo, filterBrokenImages, searchText, brokenImageMap])
 
-  // 實際顯示的資料（無限滾動）
-  const displayedArchives = useMemo(() => {
-    return filteredArchives.slice(0, displayCount)
-  }, [filteredArchives, displayCount])
-
-  // 當 filter 改變時，重設顯示數量
+  // 測量容器寬度，計算每行幾列
   useEffect(() => {
-    setDisplayCount(20)
-  }, [filterMember, filterType, filterHasVideo, filterBrokenImages, searchText])
-
-  // 無限滾動 - IntersectionObserver
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && displayCount < filteredArchives.length) {
-          setDisplayCount(prev => Math.min(prev + 20, filteredArchives.length))
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current)
+    const el = scrollRef.current
+    if (!el) return
+    const measure = () => {
+      const w = el.clientWidth - 32 // padding 16*2
+      setColumns(viewMode === 'grid' ? Math.max(1, Math.floor(w / 276)) : 1) // 260 + 16 gap
     }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [viewMode])
 
-    return () => observer.disconnect()
-  }, [displayCount, filteredArchives.length])
+  // 虛擬化行數
+  const rowCount = useMemo(() => Math.ceil(filteredArchives.length / columns), [filteredArchives.length, columns])
+
+  const virtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => viewMode === 'grid' ? 340 : 120,
+    overscan: 3,
+  })
 
   // 開啟新增 Modal
   function openAddModal() {
@@ -1562,7 +1559,7 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
       </div>
 
       {/* Archive Grid/List */}
-      <div className={`social-content ${viewMode}`}>
+      <div ref={scrollRef} className={`social-content-scroll`}>
         {filteredArchives.length === 0 ? (
           <div className="empty-state">
             <Instagram size={48} />
@@ -1570,101 +1567,109 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
             <button onClick={openAddModal}>新增第一筆</button>
           </div>
         ) : (
-          displayedArchives.map(item => (
-            <div
-              key={item.id}
-              className={`archive-card ${selectMode && selectedIds.includes(item.id) ? 'selected' : ''}`}
-              onClick={() => selectMode ? toggleSelect(item.id) : openViewModal(item)}
-            >
-              {/* 勾選框 */}
-              {selectMode && (
+          <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+            {virtualizer.getVirtualItems().map(vRow => {
+              const startIdx = vRow.index * columns
+              const rowItems = filteredArchives.slice(startIdx, startIdx + columns)
+              return (
                 <div
-                  className="card-checkbox"
-                  onClick={(e) => { e.stopPropagation(); toggleSelect(item.id) }}
+                  key={vRow.key}
+                  className={`social-content ${viewMode}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    transform: `translateY(${vRow.start}px)`,
+                  }}
+                  ref={virtualizer.measureElement}
+                  data-index={vRow.index}
                 >
-                  {selectedIds.includes(item.id) ? <CheckSquare size={20} /> : <Square size={20} />}
-                </div>
-              )}
-              {/* 縮圖 */}
-              <div className="archive-thumb">
-                {item.media?.[0] ? (
-                  item.media[0].type === 'youtube' ? (
-                    <div className="video-thumb-img">
-                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" />
-                      <Play size={24} className="play-overlay" />
+                  {rowItems.map(item => (
+                    <div
+                      key={item.id}
+                      className={`archive-card ${selectMode && selectedIds.includes(item.id) ? 'selected' : ''}`}
+                      onClick={() => selectMode ? toggleSelect(item.id) : openViewModal(item)}
+                    >
+                      {/* 勾選框 */}
+                      {selectMode && (
+                        <div
+                          className="card-checkbox"
+                          onClick={(e) => { e.stopPropagation(); toggleSelect(item.id) }}
+                        >
+                          {selectedIds.includes(item.id) ? <CheckSquare size={20} /> : <Square size={20} />}
+                        </div>
+                      )}
+                      {/* 縮圖 */}
+                      <div className="archive-thumb">
+                        {item.media?.[0] ? (
+                          item.media[0].type === 'youtube' ? (
+                            <div className="video-thumb-img">
+                              <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" width={260} height={260} />
+                              <Play size={24} className="play-overlay" />
+                            </div>
+                          ) : item.media[0].type === 'video' ? (
+                            item.media[0].thumbnail ? (
+                              <div className="video-thumb-img">
+                                <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" width={260} height={260} />
+                                <Play size={24} className="play-overlay" />
+                              </div>
+                            ) : (
+                              <div className="video-thumb-auto">
+                                <video src={item.media[0].backupUrl || item.media[0].url} muted preload="metadata" />
+                                <Play size={24} className="play-overlay" />
+                              </div>
+                            )
+                          ) : (
+                            <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" width={260} height={260} />
+                          )
+                        ) : (
+                          <div className="no-thumb">
+                            <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" />
+                          </div>
+                        )}
+                        {item.media?.length > 1 && (
+                          <span className="media-count">+{item.media.length - 1}</span>
+                        )}
+                        <span
+                          className="type-badge"
+                          style={{ background: POST_TYPES.find(t => t.id === item.type)?.color }}
+                        >
+                          {POST_TYPES.find(t => t.id === item.type)?.icon}
+                        </span>
+                        {brokenImageMap[item.id]?.length > 0 && (
+                          <span className="broken-badge" title={`${brokenImageMap[item.id].length} 張圖片損壞`}>
+                            <ImageOff size={14} />
+                            {brokenImageMap[item.id].length}
+                          </span>
+                        )}
+                        {(syncingIds.has(item.id) || currentSyncingId === item.id) && (
+                          <div className="syncing-overlay">
+                            <RefreshCw size={24} className="spinning" />
+                            <span>同步中...</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="archive-info">
+                        <div className="archive-meta">
+                          <span
+                            className="member-tag"
+                            style={{ background: getMemberColor(item.member) + '30', color: getMemberColor(item.member) }}
+                          >
+                            {item.member}
+                          </span>
+                          <span className="date">{isAdmin && item.time ? formatDateTime(item.date, item.time) : formatDate(item.date)}</span>
+                        </div>
+                        {item.caption && (
+                          <p className="archive-caption">{item.caption}</p>
+                        )}
+                      </div>
                     </div>
-                  ) : item.media[0].type === 'video' ? (
-                    item.media[0].thumbnail ? (
-                      // 有縮圖就顯示縮圖
-                      <div className="video-thumb-img">
-                        <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" />
-                        <Play size={24} className="play-overlay" />
-                      </div>
-                    ) : (
-                      // 沒縮圖就用影片自動生成
-                      <div className="video-thumb-auto">
-                        <video src={item.media[0].backupUrl || item.media[0].url} muted preload="metadata" />
-                        <Play size={24} className="play-overlay" />
-                      </div>
-                    )
-                  ) : (
-                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" />
-                  )
-                ) : (
-                  <div className="no-thumb">
-                    <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" />
-                  </div>
-                )}
-                {item.media?.length > 1 && (
-                  <span className="media-count">+{item.media.length - 1}</span>
-                )}
-                {/* 類型標籤 */}
-                <span
-                  className="type-badge"
-                  style={{ background: POST_TYPES.find(t => t.id === item.type)?.color }}
-                >
-                  {POST_TYPES.find(t => t.id === item.type)?.icon}
-                </span>
-                {/* 壞圖警示 */}
-                {brokenImageMap[item.id]?.length > 0 && (
-                  <span className="broken-badge" title={`${brokenImageMap[item.id].length} 張圖片損壞`}>
-                    <ImageOff size={14} />
-                    {brokenImageMap[item.id].length}
-                  </span>
-                )}
-                {/* 同步中 Loading 覆蓋層（支援單則同步 syncingIds 和批次同步 currentSyncingId） */}
-                {(syncingIds.has(item.id) || currentSyncingId === item.id) && (
-                  <div className="syncing-overlay">
-                    <RefreshCw size={24} className="spinning" />
-                    <span>同步中...</span>
-                  </div>
-                )}
-              </div>
-
-              {/* 資訊 */}
-              <div className="archive-info">
-                <div className="archive-meta">
-                  <span
-                    className="member-tag"
-                    style={{ background: getMemberColor(item.member) + '30', color: getMemberColor(item.member) }}
-                  >
-                    {item.member}
-                  </span>
-                  <span className="date">{isAdmin && item.time ? formatDateTime(item.date, item.time) : formatDate(item.date)}</span>
+                  ))}
                 </div>
-                {item.caption && (
-                  <p className="archive-caption">{item.caption}</p>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-
-        {/* 載入更多 sentinel */}
-        {displayCount < filteredArchives.length && (
-          <div ref={loadMoreRef} className="load-more-sentinel">
-            <RefreshCw size={20} className="spinning" />
-            <span>載入更多... ({displayCount}/{filteredArchives.length})</span>
+              )
+            })}
           </div>
         )}
       </div>
@@ -2133,3 +2138,5 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
     </div>
   )
 }
+
+export default memo(SocialArchive)

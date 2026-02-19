@@ -2,8 +2,10 @@
 /* 與時間軸風格一致 */
 
 .social-archive {
-  min-height: 100vh;
-  padding-bottom: 40px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: fadeIn 0.4s ease-out;
 }
 
@@ -37,7 +39,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(4px);
 }
 
 .social-header h1 {
@@ -90,7 +92,7 @@
   padding: 12px 16px;
   background: rgba(10, 10, 10, 0.95);
   border-bottom: 1px solid rgba(212, 175, 55, 0.12);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(4px);
   position: sticky;
   top: 60px; /* header 高度 */
   z-index: 99;
@@ -194,10 +196,18 @@
 }
 
 /* Content Grid */
+.social-content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px 16px 60px;
+}
+
 .social-content {
   max-width: 900px;
   margin: 0 auto;
-  padding: 20px 16px 60px;
 }
 
 .social-content.grid {
@@ -1805,7 +1815,7 @@ body.light-mode .view-edit-btn:hover {
     margin-top: 6px;
   }
 
-  .social-content {
+  .social-content-scroll {
     padding: 14px 12px 80px;
   }
 
@@ -2078,7 +2088,7 @@ body.light-mode .view-edit-btn:hover {
   padding: 12px 20px;
   background: rgba(20, 20, 20, 0.98);
   border-top: 1px solid rgba(229, 165, 0, 0.3);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(4px);
   z-index: 200;
   animation: slideUp 0.3s ease-out;
 }

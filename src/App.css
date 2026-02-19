@@ -1,5 +1,16 @@
-/* ========== 全域樣式 ========== */
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+/* Lazy loading fallback */
+.lazy-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: #888;
+  font-size: 14px;
+}
+
+/* ========== 全域樣式 ========== */
 
 * {
   box-sizing: border-box;
@@ -508,7 +519,7 @@ a {
   top: 0;
   z-index: 100;
   background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(4px);
   border-bottom: 1px solid rgba(212, 175, 55, 0.12);
   padding: 10px 16px;
   display: flex;

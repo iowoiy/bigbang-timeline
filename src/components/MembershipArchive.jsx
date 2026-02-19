@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Plus, X, Image, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download, Menu } from 'lucide-react'
 import config from '../config'
 import './MembershipArchive.css'
@@ -172,7 +173,7 @@ function getYouTubeThumbnail(url) {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
 }
 
-export default function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
+function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [archives, setArchives] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -207,8 +208,9 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
   const [confirmModal, setConfirmModal] = useState(null)
 
   // 無限滾動
-  const [displayCount, setDisplayCount] = useState(20)
-  const loadMoreRef = useRef(null)
+  // 虛擬化列表
+  const scrollRef = useRef(null)
+  const [columns, setColumns] = useState(3)
 
   // 手動輸入模式
   const [showManualInput, setShowManualInput] = useState(false)
@@ -608,33 +610,29 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
       .sort((a, b) => new Date(b.date) - new Date(a.date))
   }, [archives, filterMember, filterType, searchText])
 
-  // 實際顯示的資料（無限滾動）
-  const displayedArchives = useMemo(() => {
-    return filteredArchives.slice(0, displayCount)
-  }, [filteredArchives, displayCount])
-
-  // 當 filter 改變時，重設顯示數量
+  // 測量容器寬度，計算每行幾列
   useEffect(() => {
-    setDisplayCount(20)
-  }, [filterMember, filterType, searchText])
-
-  // 無限滾動 - IntersectionObserver
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && displayCount < filteredArchives.length) {
-          setDisplayCount(prev => Math.min(prev + 20, filteredArchives.length))
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current)
+    const el = scrollRef.current
+    if (!el) return
+    const measure = () => {
+      const w = el.clientWidth - 32
+      setColumns(viewMode === 'grid' ? Math.max(1, Math.floor(w / 276)) : 1)
     }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [viewMode])
 
-    return () => observer.disconnect()
-  }, [displayCount, filteredArchives.length])
+  // 虛擬化行數
+  const rowCount = useMemo(() => Math.ceil(filteredArchives.length / columns), [filteredArchives.length, columns])
+
+  const virtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => viewMode === 'grid' ? 340 : 120,
+    overscan: 3,
+  })
 
   // 開啟新增 Modal
   function openAddModal() {
@@ -1058,7 +1056,7 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
       </div>
 
       {/* Archive Grid/List */}
-      <div className={`membership-content ${viewMode}`}>
+      <div ref={scrollRef} className="membership-content-scroll">
         {filteredArchives.length === 0 ? (
           <div className="empty-state">
             <Lock size={48} />
@@ -1066,58 +1064,70 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
             <button onClick={openAddModal}>新增第一筆</button>
           </div>
         ) : (
-          displayedArchives.map(item => (
-            <div
-              key={item.id}
-              className="archive-card"
-              onClick={() => openViewModal(item)}
-            >
-              {/* 縮圖 */}
-              <div className="archive-thumb">
-                {item.media?.[0] ? (
-                  item.media[0].type === 'youtube' ? (
-                    <div className="video-thumb-img">
-                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" />
-                      <Play size={24} className="play-overlay" />
+          <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+            {virtualizer.getVirtualItems().map(vRow => {
+              const startIdx = vRow.index * columns
+              const rowItems = filteredArchives.slice(startIdx, startIdx + columns)
+              return (
+                <div
+                  key={vRow.key}
+                  className={`membership-content ${viewMode}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    transform: `translateY(${vRow.start}px)`,
+                  }}
+                  ref={virtualizer.measureElement}
+                  data-index={vRow.index}
+                >
+                  {rowItems.map(item => (
+                    <div
+                      key={item.id}
+                      className="archive-card"
+                      onClick={() => openViewModal(item)}
+                    >
+                      <div className="archive-thumb">
+                        {item.media?.[0] ? (
+                          item.media[0].type === 'youtube' ? (
+                            <div className="video-thumb-img">
+                              <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" width={260} height={260} />
+                              <Play size={24} className="play-overlay" />
+                            </div>
+                          ) : (
+                            <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" width={260} height={260} />
+                          )
+                        ) : (
+                          <div className="no-thumb">
+                            <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" />
+                          </div>
+                        )}
+                        {item.media?.length > 1 && (
+                          <span className="media-count">+{item.media.length - 1}</span>
+                        )}
+                      </div>
+
+                      <div className="archive-info">
+                        <div className="archive-meta">
+                          <span
+                            className="member-tag"
+                            style={{ background: getMemberColor(item.member) + '30', color: getMemberColor(item.member) }}
+                          >
+                            {item.member}
+                          </span>
+                          {item.paid && <span className="paid-badge">🔒 會員</span>}
+                          <span className="date">{formatDateTime(item.date, item.time)}</span>
+                        </div>
+                        {item.caption && (
+                          <p className="archive-caption">{dedupCaption(item.caption)}</p>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" />
-                  )
-                ) : (
-                  <div className="no-thumb">
-                    <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" />
-                  </div>
-                )}
-                {item.media?.length > 1 && (
-                  <span className="media-count">+{item.media.length - 1}</span>
-                )}
-              </div>
-
-              {/* 資訊 */}
-              <div className="archive-info">
-                <div className="archive-meta">
-                  <span
-                    className="member-tag"
-                    style={{ background: getMemberColor(item.member) + '30', color: getMemberColor(item.member) }}
-                  >
-                    {item.member}
-                  </span>
-                  {item.paid && <span className="paid-badge">🔒 會員</span>}
-                  <span className="date">{formatDateTime(item.date, item.time)}</span>
+                  ))}
                 </div>
-                {item.caption && (
-                  <p className="archive-caption">{dedupCaption(item.caption)}</p>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-
-        {/* 載入更多 sentinel */}
-        {displayCount < filteredArchives.length && (
-          <div ref={loadMoreRef} className="load-more-sentinel">
-            <span className="mini-spinner"></span>
-            <span>載入更多... ({displayCount}/{filteredArchives.length})</span>
+              )
+            })}
           </div>
         )}
       </div>
@@ -1651,3 +1661,5 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
     </div>
   )
 }
+
+export default memo(MembershipArchive)

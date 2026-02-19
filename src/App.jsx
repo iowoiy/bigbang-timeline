@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown, Sun, Moon, Menu } from 'lucide-react'
 import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
 import { DEFAULT_EVENTS } from './data/defaultEvents'
-import SocialArchive from './components/SocialArchive'
-import MembershipArchive from './components/MembershipArchive'
+const SocialArchive = lazy(() => import('./components/SocialArchive'))
+const MembershipArchive = lazy(() => import('./components/MembershipArchive'))
 
 // D1 API URL (已從 JSONBin 遷移)
 
@@ -810,12 +810,12 @@ export default function App() {
 
   // ========== 社群備份頁面 ==========
   if (currentPage === 'social') {
-    return <SocialArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} currentPage={currentPage} setCurrentPage={setCurrentPage} />
+    return <Suspense fallback={<div className="lazy-loading">載入中...</div>}><SocialArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} currentPage={currentPage} setCurrentPage={setCurrentPage} /></Suspense>
   }
 
   // ========== 會員備份頁面 ==========
   if (currentPage === 'membership') {
-    return <MembershipArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} currentPage={currentPage} setCurrentPage={setCurrentPage} />
+    return <Suspense fallback={<div className="lazy-loading">載入中...</div>}><MembershipArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} currentPage={currentPage} setCurrentPage={setCurrentPage} /></Suspense>
   }
 
   // ========== 主介面 ==========
@@ -1028,12 +1028,12 @@ export default function App() {
                       const thumbUrl = firstImg
                         ? (firstImg.backupUrl?.includes('cloudinary.com/')
                             ? firstImg.backupUrl.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
-                            : firstImg.url)
+                            : firstImg.backupUrl || firstImg.url)
                         : firstVid ? getVideoThumbnail(firstVid.url) : null
                       if (!thumbUrl) return null
                       return (
                         <div className="card-thumbnail">
-                          <img src={thumbUrl} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
+                          <img src={thumbUrl} alt="" loading="lazy" width={400} height={225} />
                           {firstVid && <div className="card-thumbnail-play">▶</div>}
                         </div>
                       )
@@ -1234,7 +1234,7 @@ export default function App() {
                     return (
                       <div key={i} className="media-grid-item">
                         {isImageUrl(m.url) ? (
-                          <img src={m.url} alt="" />
+                          <img src={m.backupUrl || m.url} alt="" />
                         ) : thumbnail ? (
                           <div className="media-grid-video-thumb">
                             <img src={thumbnail} alt="" />
@@ -1371,7 +1371,7 @@ export default function App() {
                                 className="image-list-item"
                                 onClick={() => setImageSlider({ open: true, images, index: i })}
                               >
-                                <img src={m.url} alt="" />
+                                <img src={m.backupUrl || m.url} alt="" />
                                 <div className="image-list-overlay">
                                   <span>{i + 1}/{images.length}</span>
                                 </div>
@@ -1505,7 +1505,7 @@ export default function App() {
               <ChevronLeft size={28} />
             </button>
             <div className="image-slider-main">
-              <img src={imageSlider.images[imageSlider.index]?.url} alt="" draggable={false} />
+              <img src={imageSlider.images[imageSlider.index]?.backupUrl || imageSlider.images[imageSlider.index]?.url} alt="" draggable={false} />
               <div className="image-slider-info">
                 <span>{imageSlider.index + 1} / {imageSlider.images.length}</span>
                 {imageSlider.images[imageSlider.index]?.author && (
@@ -1532,7 +1532,7 @@ export default function App() {
                   className={`image-slider-thumb ${i === imageSlider.index ? 'active' : ''}`}
                   onClick={(e) => { e.stopPropagation(); setImageSlider(s => ({ ...s, index: i })) }}
                 >
-                  <img src={img.url} alt="" />
+                  <img src={img.backupUrl || img.url} alt="" />
                 </div>
               ))}
             </div>
