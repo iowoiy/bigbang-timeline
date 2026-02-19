@@ -39,6 +39,14 @@ function genId() {
   return 's-' + Date.now()
 }
 
+function getThumbUrl(media) {
+  const backup = media.backupUrl || media.thumbnailBackupUrl
+  if (backup?.includes('cloudinary.com/')) {
+    return backup.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
+  }
+  return media.thumbnail || media.url
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -1483,7 +1491,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                     item.media[0].thumbnail ? (
                       // 有縮圖就顯示縮圖
                       <div className="video-thumb-img">
-                        <img src={item.media[0].thumbnail} alt="" loading="lazy" />
+                        <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
                         <Play size={24} className="play-overlay" />
                       </div>
                     ) : (
@@ -1494,7 +1502,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                       </div>
                     )
                   ) : (
-                    <img src={item.media[0].url} alt="" loading="lazy" />
+                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
                   )
                 ) : (
                   <div className="no-thumb">

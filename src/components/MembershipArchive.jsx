@@ -28,6 +28,14 @@ function genId() {
   return 'mb-' + Date.now()
 }
 
+// 卡片縮圖：優先用 Cloudinary 縮圖（壓縮 + WebP），fallback 用原圖
+function getThumbUrl(media) {
+  if (media.backupUrl?.includes('cloudinary.com/')) {
+    return media.backupUrl.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
+  }
+  return media.url
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -1012,11 +1020,11 @@ export default function MembershipArchive({ isAdmin, onBack }) {
                 {item.media?.[0] ? (
                   item.media[0].type === 'youtube' ? (
                     <div className="video-thumb-img">
-                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" />
+                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
                       <Play size={24} className="play-overlay" />
                     </div>
                   ) : (
-                    <img src={item.media[0].url} alt="" loading="lazy" />
+                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
                   )
                 ) : (
                   <div className="no-thumb">
