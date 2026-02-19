@@ -502,6 +502,12 @@ async function createMembershipArchive(db, data, corsHeaders) {
   const now = Date.now()
   const id = data.id || 'mb-' + now
 
+  // 先檢查是否已存在，避免重複 INSERT
+  const existing = await db.prepare('SELECT id FROM membership_archives WHERE id = ?').bind(id).first()
+  if (existing) {
+    return jsonResponse({ success: true, id, skipped: true }, 200, corsHeaders)
+  }
+
   await db.prepare(`
     INSERT INTO membership_archives (id, member, date, time, caption, media, source_url, notes, paid, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

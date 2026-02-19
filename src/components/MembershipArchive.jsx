@@ -441,17 +441,25 @@ export default function MembershipArchive({ isAdmin, onBack }) {
           updatedAt: Date.now(),
         }
 
-        await createArchive(record)
-        setArchives(prev => [record, ...prev])
-        existingIds.add(item.id)
-        existingSourceUrls.add(item.sourceUrl)
-
-        setImportProcessProgress(prev => ({
-          ...prev,
-          current: prev.current + 1,
-          success: prev.success + 1
-        }))
-        addImportLog(`✅ ${item.date} ${item.caption?.slice(0, 40) || '(無文字)'}`, 'success')
+        const result = await createArchive(record)
+        if (result.skipped) {
+          setImportProcessProgress(prev => ({
+            ...prev,
+            current: prev.current + 1,
+            skipped: prev.skipped + 1
+          }))
+          addImportLog(`⏭ 跳過（D1 已存在）: ${item.date} ${item.caption?.slice(0, 30) || '(無文字)'}`, 'info')
+        } else {
+          setArchives(prev => [record, ...prev])
+          existingIds.add(item.id)
+          existingSourceUrls.add(item.sourceUrl)
+          setImportProcessProgress(prev => ({
+            ...prev,
+            current: prev.current + 1,
+            success: prev.success + 1
+          }))
+          addImportLog(`✅ ${item.date} ${item.caption?.slice(0, 40) || '(無文字)'}`, 'success')
+        }
 
       } catch (err) {
         console.error(`匯入失敗: ${item.id}`, err)
