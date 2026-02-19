@@ -259,7 +259,7 @@ export default function App() {
 
   // Form state
   const [form, setForm] = useState({
-    id: '', year: 2025, month: 1, day: 1, cats: ['music'], title: '', desc: '',
+    id: '', year: 2025, month: 1, day: 1, time: '', cats: ['music'], title: '', desc: '',
     members: [], links: [], notes: [], media: [], editLog: []
   })
   const [expandedId, setExpandedId] = useState(null) // 展開留言的卡片 ID
@@ -455,6 +455,7 @@ export default function App() {
       year: ev.year,
       month: ev.month,
       day: ev.day || 1,
+      time: ev.time || '',
       cats: cats,
       title: ev.title,
       desc: ev.desc,
@@ -477,7 +478,7 @@ export default function App() {
     const newId = genId()
     const today = new Date()
     setForm({
-      id: newId, year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate(), cats: ['music'],
+      id: newId, year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate(), time: '', cats: ['music'],
       title: '', desc: '', members: ['全員'],
       links: [], notes: [], media: [], editLog: []
     })
@@ -518,6 +519,7 @@ export default function App() {
       year: parseInt(form.year) || 2025,
       month: parseInt(form.month) || 1,
       day: parseInt(form.day) || 1,
+      time: form.time || '',
       cats: form.cats,
       cat: form.cats[0] || 'music', // 保留 cat 欄位相容舊資料
       title: form.title,
@@ -1136,15 +1138,26 @@ export default function App() {
                 <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="事件描述" rows={3} className="form-input" />
                 <div style={{ marginBottom: 12 }}>
                   <label className="form-label">日期</label>
-                  <input
-                    type="date"
-                    value={`${form.year}-${String(form.month).padStart(2, '0')}-${String(form.day || 1).padStart(2, '0')}`}
-                    onChange={e => {
-                      const [y, m, d] = e.target.value.split('-').map(Number)
-                      setForm(f => ({ ...f, year: y, month: m, day: d }))
-                    }}
-                    className="form-input"
-                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="date"
+                      value={`${form.year}-${String(form.month).padStart(2, '0')}-${String(form.day || 1).padStart(2, '0')}`}
+                      onChange={e => {
+                        const [y, m, d] = e.target.value.split('-').map(Number)
+                        setForm(f => ({ ...f, year: y, month: m, day: d }))
+                      }}
+                      className="form-input"
+                      style={{ flex: 1 }}
+                    />
+                    <input
+                      type="time"
+                      value={form.time}
+                      onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+                      className="form-input"
+                      style={{ width: 120 }}
+                      placeholder="時間（選填）"
+                    />
+                  </div>
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <label className="form-label">分類（可多選）</label>
@@ -1313,7 +1326,7 @@ export default function App() {
                   {(viewEvent.cats || [viewEvent.cat]).filter(Boolean).map(c => (
                     <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
                   ))}
-                  <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year}/{viewEvent.month}{viewEvent.day ? `/${viewEvent.day}` : ''}</span>
+                  <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year}/{viewEvent.month}{viewEvent.day ? `/${viewEvent.day}` : ''}{viewEvent.time ? ` ${viewEvent.time}` : ''}</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{viewEvent.title}</h3>
                 <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 8, whiteSpace: 'pre-line' }}>{viewEvent.desc}</p>

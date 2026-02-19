@@ -68,10 +68,11 @@ function formatDate(dateStr) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
 }
 
-function formatDateTime(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+function formatDateTime(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return formatDate(dateStr)
+  // date 和 time 已經是 KST，直接用字串解析顯示
+  const [y, m, d] = dateStr.split('-')
+  return `${Number(y)}/${Number(m)}/${Number(d)} ${timeStr}`
 }
 
 // 取得社群備份用的 ImgBB API Key（有設定專用的就用專用的，沒有就用主要的）
@@ -737,7 +738,15 @@ export default function SocialArchive({ isAdmin, onBack }) {
       if (data.success && data.media?.length > 0) {
         // 自動填入抓到的資料
         const detectedMember = detectMemberFromUsername(data.owner?.username)
-        const postDate = data.date ? data.date.split('T')[0] : formData.date
+        // IG timestamp 是 UTC，轉換為台灣時間 (UTC+8) 來儲存日期和時間
+        let postDate = formData.date
+        let postTime = ''
+        if (data.date) {
+          const utc = new Date(data.date)
+          const tw = new Date(utc.getTime() + 8 * 60 * 60 * 1000)
+          postDate = `${tw.getUTCFullYear()}-${String(tw.getUTCMonth() + 1).padStart(2, '0')}-${String(tw.getUTCDate()).padStart(2, '0')}`
+          postTime = `${String(tw.getUTCHours()).padStart(2, '0')}:${String(tw.getUTCMinutes()).padStart(2, '0')}`
+        }
         const mediaList = data.media || []
 
         // 先用原始 URL 顯示預覽，標記為 uploading
@@ -757,6 +766,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
           type: data.type || prev.type,
           member: detectedMember,
           date: postDate,
+          time: postTime || prev.time,
           caption: data.caption || prev.caption,
           media: previewMedia,
         }))
@@ -1570,7 +1580,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                   >
                     {item.member}
                   </span>
-                  <span className="date">{formatDate(item.date)}</span>
+                  <span className="date">{item.time ? formatDateTime(item.date, item.time) : formatDate(item.date)}</span>
                 </div>
                 {item.caption && (
                   <p className="archive-caption">{item.caption}</p>
@@ -1689,7 +1699,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                 >
                   {POST_TYPES.find(t => t.id === viewingItem.type)?.icon} {POST_TYPES.find(t => t.id === viewingItem.type)?.label}
                 </span>
-                <span className="view-date">{formatDate(viewingItem.date)}</span>
+                <span className="view-date">{viewingItem.time ? formatDateTime(viewingItem.date, viewingItem.time) : formatDate(viewingItem.date)}</span>
               </div>
 
               {viewingItem.caption && (
