@@ -294,17 +294,20 @@ export default function App() {
       setEvents(data)
       setLoading(false)
     })
+  }, [])
 
-    // 記錄訪客（靜默，不影響載入）
+  // 記錄訪客（選擇身份時呼叫）
+  const logVisitor = (authorId) => {
     fetch(`${config.API_URL}/visitors`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userAgent: navigator.userAgent,
-        referrer: document.referrer
+        referrer: document.referrer,
+        authorId
       })
     }).catch(() => {})
-  }, [])
+  }
 
   // 淺色模式切換
   useEffect(() => {
@@ -778,7 +781,7 @@ export default function App() {
                 key={a.id}
                 className="author-btn"
                 style={{ borderColor: a.color + '33' }}
-                onClick={() => setMe(a.id)}
+                onClick={() => { setMe(a.id); logVisitor(a.id) }}
               >
                 <span style={{ fontSize: '1.8rem' }}>{a.emoji}</span>
                 <span style={{ fontSize: 15, fontWeight: 600, color: a.color }}>{a.name}</span>
