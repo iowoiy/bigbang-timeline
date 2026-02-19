@@ -1220,6 +1220,14 @@ textarea.form-input {
   overflow: hidden;
   max-width: 200px;
   position: relative;
+  background: linear-gradient(90deg, #1a1a1a 25%, #252525 50%, #1a1a1a 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .card-thumbnail img {
@@ -1227,6 +1235,12 @@ textarea.form-input {
   height: 120px;
   object-fit: cover;
   display: block;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-thumbnail img.loaded {
+  opacity: 1;
 }
 
 .card-thumbnail-play {
@@ -2093,6 +2107,12 @@ body.light-mode .card-icon-btn {
 body.light-mode .card-icon-btn:hover {
   background: rgba(255, 208, 0, 0.25);
   color: #E5A500;
+}
+
+body.light-mode .card-thumbnail {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
 }
 
 body.light-mode .overlay {

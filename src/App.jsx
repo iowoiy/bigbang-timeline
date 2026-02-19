@@ -1022,11 +1022,16 @@ export default function App() {
                     {ev.media?.length > 0 && (() => {
                       const firstImg = ev.media.find(m => isImageUrl(m.url))
                       const firstVid = !firstImg ? ev.media.find(m => getVideoThumbnail(m.url)) : null
-                      const thumbUrl = firstImg ? firstImg.url : firstVid ? getVideoThumbnail(firstVid.url) : null
+                      const thumbMedia = firstImg || firstVid
+                      const thumbUrl = firstImg
+                        ? (firstImg.backupUrl?.includes('cloudinary.com/')
+                            ? firstImg.backupUrl.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
+                            : firstImg.url)
+                        : firstVid ? getVideoThumbnail(firstVid.url) : null
                       if (!thumbUrl) return null
                       return (
                         <div className="card-thumbnail">
-                          <img src={thumbUrl} alt="" />
+                          <img src={thumbUrl} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
                           {firstVid && <div className="card-thumbnail-play">▶</div>}
                         </div>
                       )
