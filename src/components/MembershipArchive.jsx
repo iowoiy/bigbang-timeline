@@ -616,7 +616,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     if (!el) return
     const measure = () => {
       const w = el.clientWidth - 32
-      setColumns(viewMode === 'grid' ? Math.max(1, Math.floor(w / 276)) : 1)
+      setColumns(viewMode === 'grid' ? Math.max(2, Math.floor(w / 276)) : 1) // 至少 2 欄
     }
     measure()
     const ro = new ResizeObserver(measure)

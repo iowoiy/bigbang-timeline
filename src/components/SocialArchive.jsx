@@ -472,7 +472,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     if (!el) return
     const measure = () => {
       const w = el.clientWidth - 32 // padding 16*2
-      setColumns(viewMode === 'grid' ? Math.max(1, Math.floor(w / 276)) : 1) // 260 + 16 gap
+      setColumns(viewMode === 'grid' ? Math.max(2, Math.floor(w / 276)) : 1) // 至少 2 欄
     }
     measure()
     const ro = new ResizeObserver(measure)
