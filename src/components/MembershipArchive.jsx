@@ -321,6 +321,16 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
   }
 
   // 轉換單筆 b.stage 資料
+  // 顯示時自動去除重複段落（修正舊資料 caption 重複問題）
+  function dedupCaption(caption) {
+    if (!caption) return caption
+    const parts = caption.split('\n\n')
+    if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
+      return parts[0].trim()
+    }
+    return caption
+  }
+
   function transformBstageItem(item, siteKey) {
     const site = BSTAGE_SITES[siteKey]
     const publishedDate = new Date(item.publishedAt || item.createdAt)
@@ -1074,7 +1084,7 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
                   <span className="date">{formatDateTime(item.date, item.time)}</span>
                 </div>
                 {item.caption && (
-                  <p className="archive-caption">{item.caption}</p>
+                  <p className="archive-caption">{dedupCaption(item.caption)}</p>
                 )}
               </div>
             </div>
@@ -1183,7 +1193,7 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
 
               {viewingItem.caption && (
                 <div className="view-caption">
-                  <p>{viewingItem.caption}</p>
+                  <p>{dedupCaption(viewingItem.caption)}</p>
                 </div>
               )}
 
