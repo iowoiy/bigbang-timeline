@@ -1583,6 +1583,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                     left: 0,
                     right: 0,
                     transform: `translateY(${vRow.start}px)`,
+                    ...(viewMode === 'grid' ? { gridTemplateColumns: `repeat(${columns}, 1fr)` } : {}),
                   }}
                   ref={virtualizer.measureElement}
                   data-index={vRow.index}
