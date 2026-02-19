@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, X, Image, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock } from 'lucide-react'
+import { Plus, X, Image, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download } from 'lucide-react'
 import config from '../config'
 import './MembershipArchive.css'
 
@@ -12,7 +12,15 @@ const MEMBERS = [
   { name: '大聲', color: '#f4e727' },
 ]
 
+// 成員名稱別名對應（篩選用）
+const MEMBER_ALIASES = {
+  '大聲': ['Daesung'],
+  '太陽': ['Taeyang'],
+}
+
 function getMemberColor(name) {
+  const alias = Object.entries(MEMBER_ALIASES).find(([, v]) => v.includes(name))
+  if (alias) return MEMBERS.find(m => m.name === alias[0])?.color || '#E5A500'
   return MEMBERS.find(m => m.name === name)?.color || '#E5A500'
 }
 
@@ -24,6 +32,36 @@ function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
+}
+
+function formatDateTime(dateStr, timeStr) {
+  const datePart = formatDate(dateStr)
+  if (!datePart) return ''
+  if (!timeStr) return datePart
+  return `${datePart} ${timeStr}`
+}
+
+// b.stage 站台設定
+const BSTAGE_SITES = {
+  gdragon: {
+    label: 'G-Dragon (gdragon.ai)',
+    domain: 'gdragon.ai',
+    authorIds: '67a5e27bc8affa6b2c4b893b%2C677e145d5dba936413e31764',
+    defaultMember: 'G-Dragon',
+    authorMap: {
+      '67a5e27bc8affa6b2c4b893b': 'G-Dragon',
+      '677e145d5dba936413e31764': 'G-Dragon',
+    },
+  },
+  daesung: {
+    label: 'Daesung (daesung.bstage.in)',
+    domain: 'daesung.bstage.in',
+    authorIds: '64cb4a2654046402f5bde521',
+    defaultMember: '大聲',
+    authorMap: {
+      '64cb4a2654046402f5bde521': '大聲',
+    },
+  },
 }
 
 // 取得會員備份用的 ImgBB API Key
@@ -150,6 +188,16 @@ export default function MembershipArchive({ isAdmin, onBack }) {
   const [manualUrls, setManualUrls] = useState('')
   const [uploadingCount, setUploadingCount] = useState(0)
 
+  // b.stage 匯入
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [bstageToken, setBstageToken] = useState('')
+  const [importSite, setImportSite] = useState('gdragon')
+  const [importPhase, setImportPhase] = useState(null) // null | 'fetching' | 'processing' | 'done'
+  const [importFetchProgress, setImportFetchProgress] = useState({ page: 0, totalItems: 0 })
+  const [importProcessProgress, setImportProcessProgress] = useState({ current: 0, total: 0, skipped: 0, success: 0, failed: 0 })
+  const [importLog, setImportLog] = useState([])
+  const importCancelRef = useRef(false)
+
   // 載入資料
   useEffect(() => {
     loadArchives()
@@ -208,6 +256,248 @@ export default function MembershipArchive({ isAdmin, onBack }) {
     return res.json()
   }
 
+  // ===== b.stage 匯入功能 =====
+
+  function addImportLog(msg, type = 'info') {
+    setImportLog(prev => [...prev, { msg, type, ts: Date.now() }])
+  }
+
+  // Phase 1：快速抓取所有分頁
+  async function fetchAllBstagePages(token, siteKey) {
+    const site = BSTAGE_SITES[siteKey]
+    const allItems = []
+    let page = 1
+    const pageSize = 24
+    let isLast = false
+
+    while (!isLast) {
+      if (importCancelRef.current) break
+
+      const url = `https://${site.domain}/svc/home/api/v1/home/star/feeds?authorIds=${site.authorIds}&page=${page}&pageSize=${pageSize}`
+
+      const res = await fetch(url, {
+        headers: { 'authorization': `Bearer ${token}` }
+      })
+
+      if (!res.ok) {
+        if (res.status === 401) throw new Error('Token 已過期，請重新登入 b.stage 取得新的 Token')
+        throw new Error(`API 錯誤: ${res.status}`)
+      }
+
+      const data = await res.json()
+
+      if (data?.items?.length > 0) {
+        allItems.push(...data.items)
+      }
+
+      isLast = data?.isLast ?? true
+      page++
+
+      setImportFetchProgress({ page: page - 1, totalItems: allItems.length })
+      addImportLog(`第 ${page - 1} 頁：已抓取 ${allItems.length} 筆`, 'info')
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    return allItems
+  }
+
+  // 轉換單筆 b.stage 資料
+  function transformBstageItem(item, siteKey) {
+    const site = BSTAGE_SITES[siteKey]
+    const publishedDate = new Date(item.publishedAt || item.createdAt)
+    const dateStr = publishedDate.toISOString().split('T')[0]
+    const timeStr = publishedDate.toTimeString().slice(0, 5)
+
+    // 提取圖片 URL
+    const images = []
+    if (item.images && item.images.length > 0) {
+      for (const img of item.images) {
+        const imgUrl = typeof img === 'string' ? img : (img.url || img.path || img.source)
+        if (imgUrl) images.push({ originalUrl: imgUrl, type: 'image' })
+      }
+    } else if (item.mainImage) {
+      const mainUrl = typeof item.mainImage === 'string' ? item.mainImage : (item.mainImage.url || item.mainImage.path)
+      if (mainUrl) images.push({ originalUrl: mainUrl, type: 'image' })
+    }
+
+    // 影片：提取縮圖
+    let videoNote = ''
+    if (item.video) {
+      const thumbPaths = item.video.thumbnailPaths || []
+      for (const tp of thumbPaths) {
+        const thumbUrl = typeof tp === 'string' ? tp : (tp.url || tp.path)
+        if (thumbUrl) {
+          images.unshift({ originalUrl: thumbUrl, type: 'image' })
+          break
+        }
+      }
+      const hlsPath = item.video.hlsPath?.path || item.video.dashPath?.path || ''
+      if (hlsPath) videoNote = `[影片] ${hlsPath}`
+    }
+
+    const member = site.authorMap[item.author?.id] || site.defaultMember
+    const caption = [item.title, item.description].filter(Boolean).join('\n\n')
+
+    return {
+      id: `mb-bstage-${item.id}`,
+      member,
+      date: dateStr,
+      time: timeStr,
+      caption: caption || '',
+      images,
+      sourceUrl: `https://${site.domain}/feed/${item.id}`,
+      notes: videoNote,
+      bstageId: item.id,
+      paid: item.paid || false,
+    }
+  }
+
+  // Phase 2：逐筆處理（去重、上傳、存 D1）
+  async function processImportItems(items) {
+    setImportPhase('processing')
+    setImportProcessProgress({ current: 0, total: items.length, skipped: 0, success: 0, failed: 0 })
+
+    // 建立去重集合
+    const existingIds = new Set(archives.map(a => a.id))
+    const existingSourceUrls = new Set(archives.map(a => a.sourceUrl).filter(Boolean))
+
+    for (let i = 0; i < items.length; i++) {
+      if (importCancelRef.current) break
+
+      const item = items[i]
+
+      // 去重
+      if (existingIds.has(item.id) || existingSourceUrls.has(item.sourceUrl)) {
+        setImportProcessProgress(prev => ({
+          ...prev,
+          current: prev.current + 1,
+          skipped: prev.skipped + 1
+        }))
+        addImportLog(`⏭ 跳過（已存在）: ${item.date} ${item.caption?.slice(0, 30) || '(無文字)'}`, 'info')
+        continue
+      }
+
+      try {
+        // 上傳圖片（ImgBB + Cloudinary 雙備份）
+        const uploadedMedia = []
+        for (const img of item.images) {
+          try {
+            const [imgbbUrl, cloudinaryUrl] = await Promise.all([
+              uploadUrlToImgBB(img.originalUrl),
+              uploadToCloudinary(img.originalUrl)
+            ])
+            uploadedMedia.push({
+              url: imgbbUrl,
+              type: img.type,
+              ...(cloudinaryUrl && { backupUrl: cloudinaryUrl }),
+            })
+          } catch (uploadErr) {
+            console.warn('圖片上傳失敗，使用原始 URL:', uploadErr)
+            uploadedMedia.push({ url: img.originalUrl, type: img.type })
+            addImportLog(`⚠ 圖片備份失敗，使用原始連結`, 'warn')
+          }
+        }
+
+        // 建立記錄並存 D1
+        const record = {
+          id: item.id,
+          member: item.member,
+          date: item.date,
+          time: item.time,
+          caption: item.caption,
+          media: uploadedMedia,
+          sourceUrl: item.sourceUrl,
+          notes: item.notes,
+          paid: item.paid || false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+
+        await createArchive(record)
+        setArchives(prev => [record, ...prev])
+        existingIds.add(item.id)
+        existingSourceUrls.add(item.sourceUrl)
+
+        setImportProcessProgress(prev => ({
+          ...prev,
+          current: prev.current + 1,
+          success: prev.success + 1
+        }))
+        addImportLog(`✅ ${item.date} ${item.caption?.slice(0, 40) || '(無文字)'}`, 'success')
+
+      } catch (err) {
+        console.error(`匯入失敗: ${item.id}`, err)
+        setImportProcessProgress(prev => ({
+          ...prev,
+          current: prev.current + 1,
+          failed: prev.failed + 1
+        }))
+        addImportLog(`❌ 失敗: ${item.date} - ${err.message}`, 'error')
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+  }
+
+  // 主流程
+  async function handleStartImport() {
+    if (!bstageToken.trim()) {
+      showToast('請輸入 b.stage Token', 'error')
+      return
+    }
+
+    // 自動去掉 Bearer 前綴
+    let token = bstageToken.trim()
+    if (token.toLowerCase().startsWith('bearer ')) {
+      token = token.slice(7)
+    }
+
+    const siteKey = importSite
+    const siteName = BSTAGE_SITES[siteKey].label
+
+    importCancelRef.current = false
+    setImportLog([])
+    setImportPhase('fetching')
+    setImportFetchProgress({ page: 0, totalItems: 0 })
+    addImportLog(`開始從 ${siteName} 抓取資料...`, 'info')
+
+    try {
+      // Phase 1
+      const rawItems = await fetchAllBstagePages(token, siteKey)
+
+      if (importCancelRef.current) {
+        setImportPhase('done')
+        addImportLog('已取消匯入', 'warn')
+        return
+      }
+
+      addImportLog(`✅ 抓取完成：共 ${rawItems.length} 筆貼文`, 'success')
+
+      // 轉換
+      const transformed = rawItems.map(item => transformBstageItem(item, siteKey))
+
+      // Phase 2
+      await processImportItems(transformed)
+
+      if (importCancelRef.current) {
+        addImportLog('已取消匯入', 'warn')
+      } else {
+        addImportLog('🎉 匯入完成！', 'success')
+      }
+
+    } catch (err) {
+      addImportLog(`❌ 錯誤: ${err.message}`, 'error')
+      showToast(err.message, 'error')
+    } finally {
+      setImportPhase('done')
+    }
+  }
+
+  function handleCancelImport() {
+    importCancelRef.current = true
+    addImportLog('正在取消...', 'warn')
+  }
+
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 2500)
@@ -232,7 +522,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
   const filteredArchives = useMemo(() => {
     return archives
       .filter(item => {
-        if (filterMember !== 'all' && item.member !== filterMember) return false
+        if (filterMember !== 'all' && item.member !== filterMember && !MEMBER_ALIASES[filterMember]?.includes(item.member)) return false
         if (searchText && !item.caption?.toLowerCase().includes(searchText.toLowerCase())) return false
         return true
       })
@@ -278,6 +568,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
       media: [],
       sourceUrl: '',
       notes: '',
+      paid: false,
     })
     setShowManualInput(false)
     setManualUrls('')
@@ -295,6 +586,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
       media: item.media || [],
       sourceUrl: item.sourceUrl || '',
       notes: item.notes || '',
+      paid: item.paid || false,
     })
     setShowManualInput(false)
     setManualUrls('')
@@ -524,6 +816,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
       })),
       sourceUrl: formData.sourceUrl,
       notes: formData.notes,
+      paid: formData.paid || false,
       createdAt: editingItem?.createdAt || Date.now(),
       updatedAt: Date.now(),
     }
@@ -590,9 +883,16 @@ export default function MembershipArchive({ isAdmin, onBack }) {
       <header className="membership-header">
         <button className="back-btn" onClick={onBack}>← 返回時間軸</button>
         <h1>🔒 會員備份</h1>
-        <button className="add-btn" onClick={openAddModal} title="新增備份">
-          <Plus size={20} />
-        </button>
+        {isAdmin && (
+          <div className="header-actions">
+            <button className="membership-import-btn" onClick={() => setShowImportModal(true)} title="從 b.stage 匯入">
+              <Download size={18} />
+            </button>
+            <button className="add-btn" onClick={openAddModal} title="新增備份">
+              <Plus size={20} />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Filters */}
@@ -688,7 +988,8 @@ export default function MembershipArchive({ isAdmin, onBack }) {
                   >
                     {item.member}
                   </span>
-                  <span className="date">{formatDate(item.date)}</span>
+                  {item.paid && <span className="paid-badge">🔒 會員</span>}
+                  <span className="date">{formatDateTime(item.date, item.time)}</span>
                 </div>
                 {item.caption && (
                   <p className="archive-caption">{item.caption}</p>
@@ -794,7 +1095,8 @@ export default function MembershipArchive({ isAdmin, onBack }) {
                 >
                   {viewingItem.member}
                 </span>
-                <span className="view-date">{formatDate(viewingItem.date)}</span>
+                {viewingItem.paid && <span className="paid-badge">🔒 會員限定</span>}
+                <span className="view-date">{formatDateTime(viewingItem.date, viewingItem.time)}</span>
               </div>
 
               {viewingItem.caption && (
@@ -821,9 +1123,11 @@ export default function MembershipArchive({ isAdmin, onBack }) {
                     <ExternalLink size={16} /> 開啟原文
                   </a>
                 )}
-                <button className="view-edit-btn" onClick={switchToEdit}>
-                  ✏️ 編輯
-                </button>
+                {isAdmin && (
+                  <button className="view-edit-btn" onClick={switchToEdit}>
+                    ✏️ 編輯
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1024,6 +1328,18 @@ export default function MembershipArchive({ isAdmin, onBack }) {
                   rows={2}
                 />
               </div>
+
+              {/* 會員限定 */}
+              <div className="form-group paid-checkbox-group">
+                <label className="paid-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={formData.paid || false}
+                    onChange={e => setFormData(prev => ({ ...prev, paid: e.target.checked }))}
+                  />
+                  <span>🔒 會員限定內容</span>
+                </label>
+              </div>
             </div>
 
             <div className="modal-footer">
@@ -1072,6 +1388,140 @@ export default function MembershipArchive({ isAdmin, onBack }) {
               <button className={`confirm-modal-confirm confirm-modal-confirm-${confirmModal.type}`} onClick={confirmModal.onConfirm}>
                 {confirmModal.confirmText}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* b.stage 匯入 Modal */}
+      {showImportModal && (
+        <div className="modal-overlay" onClick={() => { if (!importPhase || importPhase === 'done') { setShowImportModal(false); setImportPhase(null); setBstageToken(''); setImportLog([]) } }}>
+          <div className="membership-modal import-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2><Download size={18} /> 從 b.stage 匯入</h2>
+              <button className="close-btn" onClick={() => {
+                if (importPhase && importPhase !== 'done') {
+                  handleCancelImport()
+                } else {
+                  setShowImportModal(false)
+                  setImportPhase(null)
+                  setBstageToken('')
+                  setImportLog([])
+                }
+              }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* 站台選擇 + Token 輸入 */}
+              {!importPhase && (
+                <>
+                  <div className="form-group">
+                    <label>選擇站台</label>
+                    <select
+                      className="import-site-select"
+                      value={importSite}
+                      onChange={e => setImportSite(e.target.value)}
+                    >
+                      {Object.entries(BSTAGE_SITES).map(([key, site]) => (
+                        <option key={key} value={key}>{site.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginTop: 12 }}>
+                    <label>Bearer Token</label>
+                    <textarea
+                      className="import-token-input"
+                      placeholder="從 b.stage 開發者工具複製 Bearer token..."
+                      value={bstageToken}
+                      onChange={e => setBstageToken(e.target.value)}
+                      rows={3}
+                    />
+                    <p className="import-hint">
+                      在 {BSTAGE_SITES[importSite].domain} 登入 → F12 開發者工具 → Network →
+                      找任意 API 請求 → 複製 authorization header 的值
+                      <br />⚠️ Token 約 30 分鐘過期，每個站台需使用各自的 Token
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Phase 1 進度 */}
+              {importPhase === 'fetching' && (
+                <div className="import-progress-section">
+                  <h3>🔄 抓取 b.stage 資料中...</h3>
+                  <p className="import-progress-text">
+                    第 {importFetchProgress.page} 頁，已抓取 {importFetchProgress.totalItems} 筆
+                  </p>
+                  <div className="import-progress-bar">
+                    <div className="import-progress-bar-fill fetching" />
+                  </div>
+                </div>
+              )}
+
+              {/* Phase 2 進度 */}
+              {(importPhase === 'processing' || importPhase === 'done') && (
+                <div className="import-progress-section">
+                  <h3>{importPhase === 'done' ? '✅ 匯入完成' : '📦 處理中...'}</h3>
+                  <div className="import-stats">
+                    <span className="import-stat success">✅ {importProcessProgress.success}</span>
+                    <span className="import-stat skipped">⏭ {importProcessProgress.skipped}</span>
+                    <span className="import-stat failed">❌ {importProcessProgress.failed}</span>
+                  </div>
+                  {importProcessProgress.total > 0 && (
+                    <>
+                      <div className="import-progress-bar">
+                        <div
+                          className="import-progress-bar-fill"
+                          style={{ width: `${(importProcessProgress.current / importProcessProgress.total) * 100}%` }}
+                        />
+                      </div>
+                      <p className="import-progress-text">
+                        {importProcessProgress.current} / {importProcessProgress.total}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Log */}
+              {importLog.length > 0 && (
+                <div className="import-log">
+                  {importLog.map((log, i) => (
+                    <div key={i} className={`import-log-line import-log-${log.type}`}>{log.msg}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              {!importPhase && (
+                <>
+                  <button className="cancel-btn" onClick={() => { setShowImportModal(false); setBstageToken('') }}>
+                    取消
+                  </button>
+                  <button className="save-btn" onClick={handleStartImport} disabled={!bstageToken.trim()}>
+                    <Download size={16} /> 開始匯入
+                  </button>
+                </>
+              )}
+              {importPhase && importPhase !== 'done' && (
+                <button className="cancel-btn" onClick={handleCancelImport}>
+                  取消匯入
+                </button>
+              )}
+              {importPhase === 'done' && (
+                <button className="save-btn" onClick={() => {
+                  setShowImportModal(false)
+                  setImportPhase(null)
+                  setBstageToken('')
+                  setImportLog([])
+                  setImportSite('gdragon')
+                }}>
+                  關閉
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -490,6 +490,7 @@ async function getMembershipArchives(db, params, corsHeaders) {
     media: JSON.parse(row.media || '[]'),
     sourceUrl: row.source_url,
     notes: row.notes,
+    paid: row.paid ? true : false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }))
@@ -502,8 +503,8 @@ async function createMembershipArchive(db, data, corsHeaders) {
   const id = data.id || 'mb-' + now
 
   await db.prepare(`
-    INSERT INTO membership_archives (id, member, date, time, caption, media, source_url, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO membership_archives (id, member, date, time, caption, media, source_url, notes, paid, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     data.member,
@@ -513,6 +514,7 @@ async function createMembershipArchive(db, data, corsHeaders) {
     JSON.stringify(data.media || []),
     data.sourceUrl || null,
     data.notes || null,
+    data.paid ? 1 : 0,
     data.createdAt || now,
     data.updatedAt || now
   ).run()
@@ -526,7 +528,7 @@ async function updateMembershipArchive(db, id, data, corsHeaders) {
   await db.prepare(`
     UPDATE membership_archives SET
       member = ?, date = ?, time = ?, caption = ?,
-      media = ?, source_url = ?, notes = ?, updated_at = ?
+      media = ?, source_url = ?, notes = ?, paid = ?, updated_at = ?
     WHERE id = ?
   `).bind(
     data.member,
@@ -536,6 +538,7 @@ async function updateMembershipArchive(db, id, data, corsHeaders) {
     JSON.stringify(data.media || []),
     data.sourceUrl || null,
     data.notes || null,
+    data.paid ? 1 : 0,
     now,
     id
   ).run()

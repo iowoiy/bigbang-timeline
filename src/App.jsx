@@ -251,7 +251,7 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [me, setMe] = useState(null) // 作者身份
-  const isAdmin = me === 'martin' // 馬丁自動為管理員
+  const isAdmin = localStorage.getItem('isAdmin') === 'true'
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
   const [modal, setModal] = useState(null)

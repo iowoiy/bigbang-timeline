@@ -1328,9 +1328,11 @@ export default function SocialArchive({ isAdmin, onBack }) {
       <header className="social-header">
         <button className="back-btn" onClick={onBack}>← 返回時間軸</button>
         <h1>📱 社群備份</h1>
-        <button className="add-btn" onClick={openAddModal} title="新增備份">
-          <Plus size={20} />
-        </button>
+        {isAdmin && (
+          <button className="add-btn" onClick={openAddModal} title="新增備份">
+            <Plus size={20} />
+          </button>
+        )}
       </header>
 
       {/* Filters */}
@@ -1684,9 +1686,11 @@ export default function SocialArchive({ isAdmin, onBack }) {
                     </button>
                   </>
                 )}
-                <button className="view-edit-btn" onClick={switchToEdit}>
-                  ✏️ 編輯
-                </button>
+                {isAdmin && (
+                  <button className="view-edit-btn" onClick={switchToEdit}>
+                    ✏️ 編輯
+                  </button>
+                )}
               </div>
             </div>
           </div>

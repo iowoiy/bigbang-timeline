@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS membership_archives (
   media TEXT DEFAULT '[]',         -- JSON array: [{url, type, backupUrl, thumbnail}]
   source_url TEXT,
   notes TEXT,
+  paid INTEGER DEFAULT 0,          -- 0=免費, 1=會員限定
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
