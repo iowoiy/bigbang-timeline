@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, X, Image, Film, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
+import { Plus, X, Image, Film, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
 import './SocialArchive.css'
@@ -54,12 +54,20 @@ function getYouTubeThumbnail(url) {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
 }
 
+// 主圖源：Cloudinary，ImgBB 為備份
 function getThumbUrl(media) {
   const backup = media.backupUrl || media.thumbnailBackupUrl
   if (backup?.includes('cloudinary.com/')) {
     return backup.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
   }
-  return media.thumbnail || media.url
+  return backup || media.thumbnail || media.url
+}
+
+function getViewUrl(media) {
+  if (media.backupUrl?.includes('cloudinary.com/')) {
+    return media.backupUrl.replace('/upload/', '/upload/w_1080,q_auto,f_auto/')
+  }
+  return media.backupUrl || media.url
 }
 
 function formatDate(dateStr) {
@@ -1582,25 +1590,25 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
                 {item.media?.[0] ? (
                   item.media[0].type === 'youtube' ? (
                     <div className="video-thumb-img">
-                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
+                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" />
                       <Play size={24} className="play-overlay" />
                     </div>
                   ) : item.media[0].type === 'video' ? (
                     item.media[0].thumbnail ? (
                       // 有縮圖就顯示縮圖
                       <div className="video-thumb-img">
-                        <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
+                        <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" />
                         <Play size={24} className="play-overlay" />
                       </div>
                     ) : (
                       // 沒縮圖就用影片自動生成
                       <div className="video-thumb-auto">
-                        <video src={item.media[0].url} muted preload="metadata" />
+                        <video src={item.media[0].backupUrl || item.media[0].url} muted preload="metadata" />
                         <Play size={24} className="play-overlay" />
                       </div>
                     )
                   ) : (
-                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
+                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" />
                   )
                 ) : (
                   <div className="no-thumb">
@@ -1698,14 +1706,16 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
                     />
                   ) : viewingItem.media[viewingMediaIndex]?.type === 'video' ? (
                     <video
-                      src={viewingItem.media[viewingMediaIndex].url}
+                      key={`${viewingItem.id}-${viewingMediaIndex}`}
+                      src={viewingItem.media[viewingMediaIndex].backupUrl || viewingItem.media[viewingMediaIndex].url}
                       controls
                       autoPlay
                       className="view-media"
                     />
                   ) : (
                     <img
-                      src={viewingItem.media[viewingMediaIndex]?.url}
+                      key={`${viewingItem.id}-${viewingMediaIndex}`}
+                      src={getViewUrl(viewingItem.media[viewingMediaIndex])}
                       alt=""
                       className="view-media"
                     />
@@ -1740,8 +1750,7 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
                 </>
               ) : (
                 <div className="no-media">
-                  <Camera size={48} />
-                  <p>無媒體檔案</p>
+                  <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" className="no-media-img" />
                 </div>
               )}
             </div>
@@ -1924,17 +1933,17 @@ export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrent
                         ) : m.type === 'video' ? (
                           m.thumbnail ? (
                             <div className="video-preview-img">
-                              <img src={m.thumbnail} alt="" />
+                              <img src={m.thumbnailBackupUrl || m.thumbnail} alt="" />
                               <Play size={16} className="play-icon" />
                             </div>
                           ) : (
                             <div className="video-preview-auto">
-                              <video src={m.url} muted preload="metadata" />
+                              <video src={m.backupUrl || m.url} muted preload="metadata" />
                               <Play size={16} className="play-icon" />
                             </div>
                           )
                         ) : (
-                          <img src={m.url} alt="" />
+                          <img src={m.backupUrl || m.url} alt="" />
                         )}
                         {m.uploading && (
                           <div className="upload-overlay">

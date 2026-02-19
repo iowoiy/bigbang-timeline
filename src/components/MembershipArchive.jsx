@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, X, Image, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download, Menu } from 'lucide-react'
+import { Plus, X, Image, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download, Menu } from 'lucide-react'
 import config from '../config'
 import './MembershipArchive.css'
 
@@ -29,11 +29,19 @@ function genId() {
 }
 
 // 卡片縮圖：優先用 Cloudinary 縮圖（壓縮 + WebP），fallback 用原圖
+// 主圖源：Cloudinary，ImgBB 為備份
 function getThumbUrl(media) {
   if (media.backupUrl?.includes('cloudinary.com/')) {
     return media.backupUrl.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
   }
-  return media.url
+  return media.backupUrl || media.url
+}
+
+function getViewUrl(media) {
+  if (media.backupUrl?.includes('cloudinary.com/')) {
+    return media.backupUrl.replace('/upload/', '/upload/w_1080,q_auto,f_auto/')
+  }
+  return media.backupUrl || media.url
 }
 
 function formatDate(dateStr) {
@@ -215,6 +223,7 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
   const [importFetchProgress, setImportFetchProgress] = useState({ page: 0, totalItems: 0 })
   const [importProcessProgress, setImportProcessProgress] = useState({ current: 0, total: 0, skipped: 0, success: 0, failed: 0 })
   const [importLog, setImportLog] = useState([])
+  const [forceUpdate, setForceUpdate] = useState(false)
   const importCancelRef = useRef(false)
 
   // 載入資料
@@ -413,14 +422,27 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
 
       const item = items[i]
 
-      // 去重
+      // 已存在的貼文
       if (existingIds.has(item.id) || existingSourceUrls.has(item.sourceUrl)) {
+        if (forceUpdate) {
+          // 強制更新：不重傳圖片，更新 caption / date / time
+          const matchId = existingIds.has(item.id) ? item.id : null
+          const existing = latestArchives.find(a => a.id === matchId || a.sourceUrl === item.sourceUrl)
+          if (existing) {
+            const newCaption = dedupCaption(item.caption)
+            const updated = { ...existing, caption: newCaption, date: item.date, time: item.time, updatedAt: Date.now() }
+            await updateArchive(updated).catch(err => console.warn('更新失敗:', err))
+            setArchives(prev => prev.map(a => a.id === updated.id ? updated : a))
+            addImportLog(`🔄 已更新: ${item.date} ${newCaption?.slice(0, 30) || '(無文字)'}`, 'info')
+          }
+        } else {
+          addImportLog(`⏭ 跳過（已存在）: ${item.date} ${item.caption?.slice(0, 30) || '(無文字)'}`, 'info')
+        }
         setImportProcessProgress(prev => ({
           ...prev,
           current: prev.current + 1,
           skipped: prev.skipped + 1
         }))
-        addImportLog(`⏭ 跳過（已存在）: ${item.date} ${item.caption?.slice(0, 30) || '(無文字)'}`, 'info')
         continue
       }
 
@@ -1055,11 +1077,11 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
                 {item.media?.[0] ? (
                   item.media[0].type === 'youtube' ? (
                     <div className="video-thumb-img">
-                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
+                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" />
                       <Play size={24} className="play-overlay" />
                     </div>
                   ) : (
-                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
+                    <img src={getThumbUrl(item.media[0])} alt="" loading="lazy" />
                   )
                 ) : (
                   <div className="no-thumb">
@@ -1137,7 +1159,8 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
                     />
                   ) : (
                     <img
-                      src={viewingItem.media[viewingMediaIndex]?.url}
+                      key={`${viewingItem.id}-${viewingMediaIndex}`}
+                      src={getViewUrl(viewingItem.media[viewingMediaIndex])}
                       alt=""
                       className="view-media"
                     />
@@ -1172,8 +1195,7 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
                 </>
               ) : (
                 <div className="no-media">
-                  <Camera size={48} />
-                  <p>無媒體檔案</p>
+                  <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" className="no-media-img" />
                 </div>
               )}
             </div>
@@ -1533,6 +1555,16 @@ export default function MembershipArchive({ isAdmin, onBack, currentPage, setCur
                       找任意 API 請求 → 複製 authorization header 的值
                       <br />⚠️ Token 約 30 分鐘過期，每個站台需使用各自的 Token
                     </p>
+                  </div>
+                  <div className="form-group" style={{ marginTop: 12 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={forceUpdate}
+                        onChange={e => setForceUpdate(e.target.checked)}
+                      />
+                      強制更新已存在的貼文（不重傳圖片，僅更新文字/日期）
+                    </label>
                   </div>
                 </>
               )}
