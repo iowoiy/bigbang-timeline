@@ -62,6 +62,15 @@ const BSTAGE_SITES = {
       '64cb4a2654046402f5bde521': '大聲',
     },
   },
+  taeyang: {
+    label: 'Taeyang (taeyang.bstage.in)',
+    domain: 'taeyang.bstage.in',
+    authorIds: '67361d0527162e668b09c620',
+    defaultMember: '太陽',
+    authorMap: {
+      '67361d0527162e668b09c620': '太陽',
+    },
+  },
 }
 
 // 取得會員備份用的 ImgBB API Key
@@ -155,6 +164,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
 
   // 篩選
   const [filterMember, setFilterMember] = useState('all')
+  const [filterType, setFilterType] = useState('all') // all | video | paid
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState('grid') // grid | list
 
@@ -531,11 +541,13 @@ export default function MembershipArchive({ isAdmin, onBack }) {
     return archives
       .filter(item => {
         if (filterMember !== 'all' && item.member !== filterMember && !MEMBER_ALIASES[filterMember]?.includes(item.member)) return false
+        if (filterType === 'video' && !item.notes?.includes('[影片]')) return false
+        if (filterType === 'paid' && !item.paid) return false
         if (searchText && !item.caption?.toLowerCase().includes(searchText.toLowerCase())) return false
         return true
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-  }, [archives, filterMember, searchText])
+  }, [archives, filterMember, filterType, searchText])
 
   // 實際顯示的資料（無限滾動）
   const displayedArchives = useMemo(() => {
@@ -545,7 +557,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
   // 當 filter 改變時，重設顯示數量
   useEffect(() => {
     setDisplayCount(20)
-  }, [filterMember, searchText])
+  }, [filterMember, filterType, searchText])
 
   // 無限滾動 - IntersectionObserver
   useEffect(() => {
@@ -916,6 +928,17 @@ export default function MembershipArchive({ isAdmin, onBack }) {
             {MEMBERS.map(m => (
               <option key={m.name} value={m.name}>{m.name}</option>
             ))}
+          </select>
+
+          {/* 類型篩選 */}
+          <select
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+            className="filter-select"
+          >
+            <option value="all">所有類型</option>
+            <option value="video">🎬 含影片</option>
+            <option value="paid">🔒 會員限定</option>
           </select>
 
           {/* 搜尋 */}
