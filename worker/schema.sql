@@ -39,6 +39,21 @@ CREATE TABLE IF NOT EXISTS social_archives (
 );
 
 -- =====================================================
+-- 訪客記錄
+-- =====================================================
+CREATE TABLE IF NOT EXISTS visitors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT NOT NULL,
+  country TEXT,
+  user_agent TEXT,
+  device TEXT,
+  browser TEXT,
+  referrer TEXT,
+  author_id TEXT,                  -- 選擇的身份 (可為 null)
+  timestamp INTEGER NOT NULL
+);
+
+-- =====================================================
 -- 索引
 -- =====================================================
 CREATE INDEX IF NOT EXISTS idx_events_year ON events(year);
@@ -47,3 +62,5 @@ CREATE INDEX IF NOT EXISTS idx_social_member ON social_archives(member);
 CREATE INDEX IF NOT EXISTS idx_social_date ON social_archives(date);
 CREATE INDEX IF NOT EXISTS idx_social_type ON social_archives(type);
 CREATE INDEX IF NOT EXISTS idx_social_updated ON social_archives(updated_at);
+CREATE INDEX IF NOT EXISTS idx_visitors_timestamp ON visitors(timestamp);
+CREATE INDEX IF NOT EXISTS idx_visitors_ip ON visitors(ip);

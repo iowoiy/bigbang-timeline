@@ -27,8 +27,9 @@ export default {
       return new Response(null, { headers: corsHeaders })
     }
 
-    // API Key 驗證（除了 GET 請求外都需要）
-    if (method !== 'GET') {
+    // API Key 驗證（除了 GET 請求和 POST /api/visitors 外都需要）
+    const isVisitorLog = path === '/api/visitors' && method === 'POST'
+    if (method !== 'GET' && !isVisitorLog) {
       const apiKey = request.headers.get('X-API-Key')
       if (!apiKey || apiKey !== env.API_KEY) {
         return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
@@ -81,6 +82,20 @@ export default {
       if (path === '/api/migrate/social' && method === 'POST') {
         const body = await request.json()
         return await migrateSocialArchives(env.DB, body, corsHeaders)
+      }
+
+      // === Visitors API ===
+      if (path === '/api/visitors' && method === 'POST') {
+        const body = await request.json()
+        return await logVisitor(env.DB, request, body, corsHeaders)
+      }
+      if (path === '/api/visitors' && method === 'GET') {
+        // GET 需要 API Key
+        const apiKey = request.headers.get('X-API-Key')
+        if (!apiKey || apiKey !== env.API_KEY) {
+          return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
+        }
+        return await getVisitors(env.DB, url.searchParams, corsHeaders)
       }
 
       // 404
@@ -404,4 +419,77 @@ async function migrateSocialArchives(db, data, corsHeaders) {
   }
 
   return jsonResponse({ success: true, migrated, total: archives.length }, 200, corsHeaders)
+}
+
+// =====================================================
+// Visitors API
+// =====================================================
+
+function parseUserAgent(ua) {
+  if (!ua) return { device: 'Unknown', browser: 'Unknown' }
+
+  // 裝置判斷
+  let device = 'Desktop'
+  if (/iPhone/i.test(ua)) device = 'iPhone'
+  else if (/iPad/i.test(ua)) device = 'iPad'
+  else if (/Android/i.test(ua)) device = /Mobile/i.test(ua) ? 'Android Phone' : 'Android Tablet'
+  else if (/Macintosh/i.test(ua)) device = 'Mac'
+  else if (/Windows/i.test(ua)) device = 'Windows'
+  else if (/Linux/i.test(ua)) device = 'Linux'
+
+  // 瀏覽器判斷
+  let browser = 'Unknown'
+  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) browser = 'Chrome'
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari'
+  else if (/Firefox/i.test(ua)) browser = 'Firefox'
+  else if (/Edg/i.test(ua)) browser = 'Edge'
+  else if (/Opera|OPR/i.test(ua)) browser = 'Opera'
+
+  return { device, browser }
+}
+
+async function logVisitor(db, request, body, corsHeaders) {
+  const now = Date.now()
+
+  // 從 Cloudflare headers 取得 IP 和地理資訊
+  const ip = request.headers.get('CF-Connecting-IP') || 'Unknown'
+  const country = request.headers.get('CF-IPCountry') || null
+
+  // 解析 User-Agent
+  const userAgent = body.userAgent || request.headers.get('User-Agent') || ''
+  const { device, browser } = parseUserAgent(userAgent)
+
+  await db.prepare(`
+    INSERT INTO visitors (ip, country, user_agent, device, browser, referrer, author_id, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    ip,
+    country,
+    userAgent,
+    device,
+    browser,
+    body.referrer || null,
+    body.authorId || null,
+    now
+  ).run()
+
+  return jsonResponse({ success: true }, 201, corsHeaders)
+}
+
+async function getVisitors(db, params, corsHeaders) {
+  const limit = parseInt(params.get('limit')) || 50
+  const offset = parseInt(params.get('offset')) || 0
+
+  const result = await db.prepare(`
+    SELECT * FROM visitors ORDER BY timestamp DESC LIMIT ? OFFSET ?
+  `).bind(limit, offset).all()
+
+  const count = await db.prepare('SELECT COUNT(*) as total FROM visitors').first()
+
+  return jsonResponse({
+    visitors: result.results,
+    total: count.total,
+    limit,
+    offset
+  }, 200, corsHeaders)
 }

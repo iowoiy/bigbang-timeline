@@ -294,6 +294,16 @@ export default function App() {
       setEvents(data)
       setLoading(false)
     })
+
+    // 記錄訪客（靜默，不影響載入）
+    fetch(`${config.API_URL}/visitors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAgent: navigator.userAgent,
+        referrer: document.referrer
+      })
+    }).catch(() => {})
   }, [])
 
   // 淺色模式切換
