@@ -810,12 +810,12 @@ export default function App() {
 
   // ========== 社群備份頁面 ==========
   if (currentPage === 'social') {
-    return <SocialArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} />
+    return <SocialArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} currentPage={currentPage} setCurrentPage={setCurrentPage} />
   }
 
   // ========== 會員備份頁面 ==========
   if (currentPage === 'membership') {
-    return <MembershipArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} />
+    return <MembershipArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} currentPage={currentPage} setCurrentPage={setCurrentPage} />
   }
 
   // ========== 主介面 ==========
@@ -837,6 +837,10 @@ export default function App() {
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
         </div>
         <div className="top-bar-right">
+          <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
+            {lightMode ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
+          <button onClick={openNew} className="add-btn"><Plus size={20} /></button>
           <div className="nav-menu-wrapper">
             <button onClick={() => setMenuOpen(!menuOpen)} className="hamburger-btn" title="選單">
               <Menu size={18} />
@@ -858,10 +862,6 @@ export default function App() {
               </>
             )}
           </div>
-          <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
-            {lightMode ? <Moon size={16} /> : <Sun size={16} />}
-          </button>
-          <button onClick={openNew} className="add-btn"><Plus size={20} /></button>
         </div>
       </div>
 
@@ -1326,7 +1326,7 @@ export default function App() {
                   {(viewEvent.cats || [viewEvent.cat]).filter(Boolean).map(c => (
                     <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
                   ))}
-                  <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year}/{viewEvent.month}{viewEvent.day ? `/${viewEvent.day}` : ''}{viewEvent.time ? ` ${viewEvent.time}` : ''}</span>
+                  <span style={{ fontSize: 11, color: '#666' }}>{viewEvent.year}/{viewEvent.month}{viewEvent.day ? `/${viewEvent.day}` : ''}</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{viewEvent.title}</h3>
                 <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 8, whiteSpace: 'pre-line' }}>{viewEvent.desc}</p>

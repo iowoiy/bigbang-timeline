@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, X, Image, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download } from 'lucide-react'
+import { Plus, X, Image, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download, Menu } from 'lucide-react'
 import config from '../config'
 import './MembershipArchive.css'
 
@@ -164,11 +164,12 @@ function getYouTubeThumbnail(url) {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
 }
 
-export default function MembershipArchive({ isAdmin, onBack }) {
+export default function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [archives, setArchives] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [navMenuOpen, setNavMenuOpen] = useState(false)
 
   // 篩選
   const [filterMember, setFilterMember] = useState('all')
@@ -927,8 +928,9 @@ export default function MembershipArchive({ isAdmin, onBack }) {
     <div className="membership-archive">
       {/* Header */}
       <header className="membership-header">
-        <button className="back-btn" onClick={onBack}>← 返回時間軸</button>
-        <h1>🔒 會員備份</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1>🔒 會員備份</h1>
+        </div>
         <div className="header-actions">
           {isAdmin && (
             <button className="membership-import-btn" onClick={() => setShowImportModal(true)} title="從 b.stage 匯入">
@@ -938,6 +940,29 @@ export default function MembershipArchive({ isAdmin, onBack }) {
           <button className="add-btn" onClick={openAddModal} title="新增備份">
             <Plus size={20} />
           </button>
+          {setCurrentPage && (
+            <div className="nav-menu-wrapper">
+              <button onClick={() => setNavMenuOpen(!navMenuOpen)} className="hamburger-btn" title="選單">
+                <Menu size={18} />
+              </button>
+              {navMenuOpen && (
+                <>
+                  <div className="nav-menu-overlay" onClick={() => setNavMenuOpen(false)} />
+                  <div className="nav-menu">
+                    <button className={`nav-menu-item ${currentPage === 'timeline' ? 'active' : ''}`} onClick={() => { setCurrentPage('timeline'); setNavMenuOpen(false) }}>
+                      <span>📅</span> 時間軸
+                    </button>
+                    <button className={`nav-menu-item ${currentPage === 'social' ? 'active' : ''}`} onClick={() => { setCurrentPage('social'); setNavMenuOpen(false) }}>
+                      <span>📷</span> 社群備份
+                    </button>
+                    <button className={`nav-menu-item ${currentPage === 'membership' ? 'active' : ''}`} onClick={() => { setCurrentPage('membership'); setNavMenuOpen(false) }}>
+                      <span>🔒</span> 會員備份
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

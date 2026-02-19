@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, X, Image, Film, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, X, Image, Film, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
 import './SocialArchive.css'
@@ -179,11 +179,12 @@ async function fetchIGData(url) {
   }
 }
 
-export default function SocialArchive({ isAdmin, onBack }) {
+export default function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [archives, setArchives] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [navMenuOpen, setNavMenuOpen] = useState(false)
 
   // 篩選
   const [filterMember, setFilterMember] = useState('all')
@@ -318,9 +319,9 @@ export default function SocialArchive({ isAdmin, onBack }) {
     })
   }
 
-  // 檢查貼文是否含有影片
+  // 檢查貼文是否含有影片（包含 YouTube）
   function hasVideo(item) {
-    return item.media?.some(m => m.type === 'video')
+    return item.media?.some(m => m.type === 'video' || m.type === 'youtube')
   }
 
   // 檢查貼文是否有壞圖
@@ -667,10 +668,26 @@ export default function SocialArchive({ isAdmin, onBack }) {
         ? await uploadMediaList(data.media, itemToSync.media || [])
         : []
 
+      // 保留手動加的 YouTube 媒體
+      const existingYouTube = (itemToSync.media || []).filter(m => m.type === 'youtube')
+      const mergedMedia = [...newMedia, ...existingYouTube]
+
+      // 更新日期時間（UTC → 台灣時間 UTC+8）
+      let syncDate = itemToSync.date
+      let syncTime = itemToSync.time || ''
+      if (data.date) {
+        const utc = new Date(data.date)
+        const tw = new Date(utc.getTime() + 8 * 60 * 60 * 1000)
+        syncDate = `${tw.getUTCFullYear()}-${String(tw.getUTCMonth() + 1).padStart(2, '0')}-${String(tw.getUTCDate()).padStart(2, '0')}`
+        syncTime = `${String(tw.getUTCHours()).padStart(2, '0')}:${String(tw.getUTCMinutes()).padStart(2, '0')}`
+      }
+
       const updatedItem = {
         ...itemToSync,
-        media: newMedia,
+        media: mergedMedia,
         caption: data.caption || itemToSync.caption,
+        date: syncDate,
+        time: syncTime,
         updatedAt: Date.now()
       }
 
@@ -1292,6 +1309,16 @@ export default function SocialArchive({ isAdmin, onBack }) {
         }
 
         if (data.success && data.media?.length > 0) {
+          // 更新日期時間（UTC → 台灣時間 UTC+8）
+          let batchDate = item.date
+          let batchTime = item.time || ''
+          if (data.date) {
+            const utc = new Date(data.date)
+            const tw = new Date(utc.getTime() + 8 * 60 * 60 * 1000)
+            batchDate = `${tw.getUTCFullYear()}-${String(tw.getUTCMonth() + 1).padStart(2, '0')}-${String(tw.getUTCDate()).padStart(2, '0')}`
+            batchTime = `${String(tw.getUTCHours()).padStart(2, '0')}:${String(tw.getUTCMinutes()).padStart(2, '0')}`
+          }
+
           let updatedItem
           if (videoOnlyMode) {
             // 只更新影片 URL，保留現有 thumbnail
@@ -1299,6 +1326,8 @@ export default function SocialArchive({ isAdmin, onBack }) {
             updatedItem = {
               ...item,
               media: mergedMedia,
+              date: batchDate,
+              time: batchTime,
               updatedAt: Date.now()
             }
             console.log(`✅ ${item.id} 影片 URL 已更新（保留 thumbnail）`)
@@ -1311,16 +1340,23 @@ export default function SocialArchive({ isAdmin, onBack }) {
               break
             }
 
+            // 保留手動加的 YouTube 媒體
+            const existingYouTube = (item.media || []).filter(m => m.type === 'youtube')
+            const mergedMedia = [...newMedia, ...existingYouTube]
+
             updatedItem = {
               ...item,
-              media: newMedia,
+              media: mergedMedia,
               caption: data.caption || item.caption,
+              date: batchDate,
+              time: batchTime,
               updatedAt: Date.now()
             }
           }
 
-          // 即時更新畫面（每完成一筆就更新）
+          // 即時更新畫面 + 存到 D1
           setArchives(prev => prev.map(a => a.id === item.id ? updatedItem : a))
+          updateArchive(updatedItem).catch(err => console.warn('D1 儲存失敗:', err))
           successCount++
 
           // 強制讓出執行緒，讓 React 有機會更新 UI
@@ -1367,11 +1403,37 @@ export default function SocialArchive({ isAdmin, onBack }) {
     <div className="social-archive">
       {/* Header */}
       <header className="social-header">
-        <button className="back-btn" onClick={onBack}>← 返回時間軸</button>
-        <h1>📱 社群備份</h1>
-        <button className="add-btn" onClick={openAddModal} title="新增備份">
-          <Plus size={20} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1>📱 社群備份</h1>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="add-btn" onClick={openAddModal} title="新增備份">
+            <Plus size={20} />
+          </button>
+          {setCurrentPage && (
+            <div className="nav-menu-wrapper">
+              <button onClick={() => setNavMenuOpen(!navMenuOpen)} className="hamburger-btn" title="選單">
+                <Menu size={18} />
+              </button>
+              {navMenuOpen && (
+                <>
+                  <div className="nav-menu-overlay" onClick={() => setNavMenuOpen(false)} />
+                  <div className="nav-menu">
+                    <button className={`nav-menu-item ${currentPage === 'timeline' ? 'active' : ''}`} onClick={() => { setCurrentPage('timeline'); setNavMenuOpen(false) }}>
+                      <span>📅</span> 時間軸
+                    </button>
+                    <button className={`nav-menu-item ${currentPage === 'social' ? 'active' : ''}`} onClick={() => { setCurrentPage('social'); setNavMenuOpen(false) }}>
+                      <span>📷</span> 社群備份
+                    </button>
+                    <button className={`nav-menu-item ${currentPage === 'membership' ? 'active' : ''}`} onClick={() => { setCurrentPage('membership'); setNavMenuOpen(false) }}>
+                      <span>🔒</span> 會員備份
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Filters */}
@@ -1580,7 +1642,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                   >
                     {item.member}
                   </span>
-                  <span className="date">{item.time ? formatDateTime(item.date, item.time) : formatDate(item.date)}</span>
+                  <span className="date">{isAdmin && item.time ? formatDateTime(item.date, item.time) : formatDate(item.date)}</span>
                 </div>
                 {item.caption && (
                   <p className="archive-caption">{item.caption}</p>
@@ -1699,7 +1761,7 @@ export default function SocialArchive({ isAdmin, onBack }) {
                 >
                   {POST_TYPES.find(t => t.id === viewingItem.type)?.icon} {POST_TYPES.find(t => t.id === viewingItem.type)?.label}
                 </span>
-                <span className="view-date">{viewingItem.time ? formatDateTime(viewingItem.date, viewingItem.time) : formatDate(viewingItem.date)}</span>
+                <span className="view-date">{isAdmin && viewingItem.time ? formatDateTime(viewingItem.date, viewingItem.time) : formatDate(viewingItem.date)}</span>
               </div>
 
               {viewingItem.caption && (
@@ -1726,15 +1788,17 @@ export default function SocialArchive({ isAdmin, onBack }) {
                     >
                       <ExternalLink size={16} /> 開啟 IG
                     </a>
-                    <button
-                      className="view-sync-btn"
-                      onClick={handleSingleSync}
-                      disabled={isItemSyncing(viewingItem.id)}
-                      title="重新抓取 IG 資料"
-                    >
-                      <RefreshCw size={16} className={isItemSyncing(viewingItem.id) ? 'spinning' : ''} />
-                      {isItemSyncing(viewingItem.id) ? '同步中...' : '同步'}
-                    </button>
+                    {isAdmin && (
+                      <button
+                        className="view-sync-btn"
+                        onClick={handleSingleSync}
+                        disabled={isItemSyncing(viewingItem.id)}
+                        title="重新抓取 IG 資料"
+                      >
+                        <RefreshCw size={16} className={isItemSyncing(viewingItem.id) ? 'spinning' : ''} />
+                        {isItemSyncing(viewingItem.id) ? '同步中...' : '同步'}
+                      </button>
+                    )}
                   </>
                 )}
                 <button className="view-edit-btn" onClick={switchToEdit}>
