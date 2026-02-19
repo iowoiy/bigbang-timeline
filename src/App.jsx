@@ -35,6 +35,15 @@ function formatTime(ts) {
 }
 
 // ========== 媒體工具函式 ==========
+// 卡片縮圖：Cloudinary 優先 + 壓縮
+function getThumbUrl(media) {
+  const backup = media.backupUrl || media.thumbnailBackupUrl
+  if (backup?.includes('cloudinary.com/')) {
+    return backup.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
+  }
+  return backup || media.thumbnail || media.url
+}
+
 // 上傳圖片到 ImgBB
 async function uploadToImgBB(file) {
   const formData = new FormData()
@@ -75,6 +84,28 @@ async function uploadToCloudinary(file) {
     throw new Error(data.error?.message || '上傳失敗')
   } catch (err) {
     console.warn('Cloudinary 備份失敗:', err.message)
+    return null
+  }
+}
+
+// 用 URL 上傳到 Cloudinary（遷移舊圖片用）
+async function uploadToCloudinary_URL(imageUrl) {
+  try {
+    const formData = new FormData()
+    formData.append('file', imageUrl)
+    formData.append('upload_preset', config.CLOUDINARY_UPLOAD_PRESET)
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${config.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      { method: 'POST', body: formData }
+    )
+    const data = await res.json()
+    if (data.secure_url) {
+      return data.secure_url
+    }
+    console.warn('Cloudinary URL upload 失敗:', data.error?.message)
+    return null
+  } catch (err) {
+    console.warn('Cloudinary URL upload 錯誤:', err.message)
     return null
   }
 }
@@ -281,6 +312,8 @@ export default function App() {
   const [lightMode, setLightMode] = useState(() => localStorage.getItem('lightMode') === 'true') // 淺色模式
   const [currentPage, setCurrentPage] = useState('timeline') // 頁面切換：'timeline' | 'social' | 'membership'
   const [menuOpen, setMenuOpen] = useState(false) // hamburger menu 開關
+  const [migrating, setMigrating] = useState(false)
+  const [migrateProgress, setMigrateProgress] = useState({ current: 0, total: 0, failed: 0 })
 
   const fileInputRef = useRef(null)
 
@@ -385,6 +418,53 @@ export default function App() {
       flash('載入失敗', 'error')
     }
     setSyncing(false)
+  }
+
+  // 批次遷移：把舊圖片（只有 ImgBB URL）補傳到 Cloudinary
+  const migrateImages = async () => {
+    if (migrating) return
+    setMigrating(true)
+
+    // 找出所有需要遷移的 events
+    const tasks = events.filter(ev =>
+      ev.media?.some(m => isImageUrl(m.url) && !m.backupUrl)
+    )
+    setMigrateProgress({ current: 0, total: tasks.length, failed: 0 })
+
+    let failCount = 0
+    for (let i = 0; i < tasks.length; i++) {
+      const ev = tasks[i]
+      let updated = false
+      const newMedia = await Promise.all(ev.media.map(async m => {
+        if (isImageUrl(m.url) && !m.backupUrl) {
+          const cloudinaryUrl = await uploadToCloudinary_URL(m.url)
+          if (cloudinaryUrl) {
+            updated = true
+            return { ...m, backupUrl: cloudinaryUrl }
+          }
+          failCount++
+        }
+        return m
+      }))
+
+      if (updated) {
+        try {
+          await updateEvent({ ...ev, media: newMedia })
+          setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, media: newMedia } : e))
+        } catch (err) {
+          console.warn(`遷移 event ${ev.id} 更新失敗:`, err)
+          failCount++
+        }
+      }
+      setMigrateProgress({ current: i + 1, total: tasks.length, failed: failCount })
+    }
+
+    setMigrating(false)
+    if (failCount === 0) {
+      flash(`遷移完成！共 ${tasks.length} 筆事件`, 'success')
+    } else {
+      flash(`遷移完成，${failCount} 個失敗`, 'error')
+    }
   }
 
   // 篩選與排序
@@ -835,6 +915,19 @@ export default function App() {
         <div className="top-bar-left">
           <span className="top-bar-logo">BIGBANG</span>
           <button onClick={refresh} className={`sync-btn ${syncing ? 'syncing' : ''}`} title="同步" disabled={syncing}><RefreshCw size={14} /></button>
+          {isAdmin && (
+            <button
+              onClick={migrateImages}
+              disabled={migrating}
+              className="sync-btn migrate-btn"
+              title="遷移舊圖片到 Cloudinary"
+              style={{ fontSize: 10, padding: '4px 8px', whiteSpace: 'nowrap' }}
+            >
+              {migrating
+                ? `遷移中 ${migrateProgress.current}/${migrateProgress.total}`
+                : '遷移圖片'}
+            </button>
+          )}
         </div>
         <div className="top-bar-right">
           <button onClick={() => setLightMode(!lightMode)} className="theme-btn" title={lightMode ? '切換深色模式' : '切換淺色模式'}>
@@ -1024,11 +1117,8 @@ export default function App() {
                     {ev.media?.length > 0 && (() => {
                       const firstImg = ev.media.find(m => isImageUrl(m.url))
                       const firstVid = !firstImg ? ev.media.find(m => getVideoThumbnail(m.url)) : null
-                      const thumbMedia = firstImg || firstVid
                       const thumbUrl = firstImg
-                        ? (firstImg.backupUrl?.includes('cloudinary.com/')
-                            ? firstImg.backupUrl.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
-                            : firstImg.backupUrl || firstImg.url)
+                        ? getThumbUrl(firstImg)
                         : firstVid ? getVideoThumbnail(firstVid.url) : null
                       if (!thumbUrl) return null
                       return (

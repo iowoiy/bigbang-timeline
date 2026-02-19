@@ -119,7 +119,9 @@ async function uploadUrlToImgBB(imageUrl) {
 
 // 上傳圖片到 Cloudinary 作為備份
 async function uploadToCloudinary(imageUrl) {
-  if (!config.CLOUDINARY_CLOUD_NAME || !config.CLOUDINARY_UPLOAD_PRESET) {
+  const cloudName = config.SOCIAL_CLOUDINARY_CLOUD_NAME || config.CLOUDINARY_CLOUD_NAME
+  const preset = config.SOCIAL_CLOUDINARY_PRESET || config.CLOUDINARY_UPLOAD_PRESET
+  if (!cloudName || !preset) {
     console.warn('Cloudinary 未設定，跳過備份')
     return null
   }
@@ -127,10 +129,10 @@ async function uploadToCloudinary(imageUrl) {
   try {
     const formData = new FormData()
     formData.append('file', imageUrl)
-    formData.append('upload_preset', config.CLOUDINARY_UPLOAD_PRESET)
+    formData.append('upload_preset', preset)
 
     const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${config.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
       { method: 'POST', body: formData }
     )
     const data = await res.json()

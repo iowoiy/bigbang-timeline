@@ -27,9 +27,13 @@ const config = {
   // 社群備份專用 ImgBB API Key
   SOCIAL_IMGBB_API_KEY: '672b4da7edd52fce03eec8e05084b39f',
 
-  // Cloudinary 備份設定
-  CLOUDINARY_CLOUD_NAME: 'dn0jpjoek',
-  CLOUDINARY_UPLOAD_PRESET: 'Bigbang-timeline',
+  // Cloudinary 備份設定（時間軸用）
+  CLOUDINARY_CLOUD_NAME: 'dxiciyujo',
+  CLOUDINARY_UPLOAD_PRESET: 'bigbang-timeline',
+
+  // 社群備份專用 Cloudinary
+  SOCIAL_CLOUDINARY_CLOUD_NAME: 'dn0jpjoek',
+  SOCIAL_CLOUDINARY_PRESET: 'bigbang-socialmedia',
 
   // 會員備份專用設定
   MEMBERSHIP_IMGBB_API_KEY: '5ba49f2d518646b1d60d3bb5749ffd18',
