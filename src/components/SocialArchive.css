@@ -1316,6 +1316,14 @@
   object-fit: contain;
 }
 
+.view-youtube {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border: none;
+  border-radius: 8px;
+  max-height: 55vh;
+}
+
 .no-media {
   display: flex;
   flex-direction: column;

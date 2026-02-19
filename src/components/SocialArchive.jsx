@@ -39,6 +39,21 @@ function genId() {
   return 's-' + Date.now()
 }
 
+// YouTube 相關 helper
+function isYouTubeUrl(url) {
+  return /(?:youtube\.com\/(?:watch|embed|shorts)|youtu\.be\/)/i.test(url)
+}
+
+function getYouTubeId(url) {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return match ? match[1] : null
+}
+
+function getYouTubeThumbnail(url) {
+  const id = getYouTubeId(url)
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
+}
+
 function getThumbUrl(media) {
   const backup = media.backupUrl || media.thumbnailBackupUrl
   if (backup?.includes('cloudinary.com/')) {
@@ -805,6 +820,14 @@ export default function SocialArchive({ isAdmin, onBack }) {
 
     // 判斷媒體類型
     const newMedia = urls.map((url, i) => {
+      if (isYouTubeUrl(url)) {
+        return {
+          url,
+          type: 'youtube',
+          thumbnail: getYouTubeThumbnail(url),
+          index: formData.media.length + i,
+        }
+      }
       const isVideo = /\.(mp4|mov|webm|m4v)/i.test(url) || url.includes('video')
       return {
         url,
@@ -1336,11 +1359,9 @@ export default function SocialArchive({ isAdmin, onBack }) {
       <header className="social-header">
         <button className="back-btn" onClick={onBack}>← 返回時間軸</button>
         <h1>📱 社群備份</h1>
-        {isAdmin && (
-          <button className="add-btn" onClick={openAddModal} title="新增備份">
-            <Plus size={20} />
-          </button>
-        )}
+        <button className="add-btn" onClick={openAddModal} title="新增備份">
+          <Plus size={20} />
+        </button>
       </header>
 
       {/* Filters */}
@@ -1487,7 +1508,12 @@ export default function SocialArchive({ isAdmin, onBack }) {
               {/* 縮圖 */}
               <div className="archive-thumb">
                 {item.media?.[0] ? (
-                  item.media[0].type === 'video' ? (
+                  item.media[0].type === 'youtube' ? (
+                    <div className="video-thumb-img">
+                      <img src={item.media[0].thumbnail || getYouTubeThumbnail(item.media[0].url)} alt="" loading="lazy" onLoad={e => e.target.classList.add('loaded')} />
+                      <Play size={24} className="play-overlay" />
+                    </div>
+                  ) : item.media[0].type === 'video' ? (
                     item.media[0].thumbnail ? (
                       // 有縮圖就顯示縮圖
                       <div className="video-thumb-img">
@@ -1591,7 +1617,14 @@ export default function SocialArchive({ isAdmin, onBack }) {
             <div className="view-media-area">
               {viewingItem.media?.length > 0 ? (
                 <>
-                  {viewingItem.media[viewingMediaIndex]?.type === 'video' ? (
+                  {viewingItem.media[viewingMediaIndex]?.type === 'youtube' ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${getYouTubeId(viewingItem.media[viewingMediaIndex].url)}?autoplay=1`}
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                      className="view-media view-youtube"
+                    />
+                  ) : viewingItem.media[viewingMediaIndex]?.type === 'video' ? (
                     <video
                       src={viewingItem.media[viewingMediaIndex].url}
                       controls
@@ -1694,11 +1727,9 @@ export default function SocialArchive({ isAdmin, onBack }) {
                     </button>
                   </>
                 )}
-                {isAdmin && (
-                  <button className="view-edit-btn" onClick={switchToEdit}>
-                    ✏️ 編輯
-                  </button>
-                )}
+                <button className="view-edit-btn" onClick={switchToEdit}>
+                  ✏️ 編輯
+                </button>
               </div>
             </div>
           </div>
@@ -1811,15 +1842,18 @@ export default function SocialArchive({ isAdmin, onBack }) {
                     const isBroken = editingItem && brokenImageMap[editingItem.id]?.includes(i)
                     return (
                       <div key={i} className={`media-preview ${m.uploading ? 'uploading' : ''} ${m.uploadFailed ? 'failed' : ''} ${isBroken ? 'broken' : ''}`}>
-                        {m.type === 'video' ? (
+                        {m.type === 'youtube' ? (
+                          <div className="video-preview-img">
+                            <img src={m.thumbnail || getYouTubeThumbnail(m.url)} alt="" />
+                            <Play size={16} className="play-icon" />
+                          </div>
+                        ) : m.type === 'video' ? (
                           m.thumbnail ? (
-                            // 有縮圖
                             <div className="video-preview-img">
                               <img src={m.thumbnail} alt="" />
                               <Play size={16} className="play-icon" />
                             </div>
                           ) : (
-                            // 沒縮圖，用影片自動生成
                             <div className="video-preview-auto">
                               <video src={m.url} muted preload="metadata" />
                               <Play size={16} className="play-icon" />
@@ -1878,10 +1912,10 @@ export default function SocialArchive({ isAdmin, onBack }) {
                 {showManualInput && (
                   <div className="manual-url-input">
                     <p className="manual-hint">
-                      💡 提示：在 IG 貼文上右鍵「複製圖片網址」，每行貼一個
+                      💡 提示：支援圖片、影片、YouTube 連結，每行一個
                     </p>
                     <textarea
-                      placeholder="貼上圖片/影片網址，每行一個...&#10;例如：&#10;https://scontent-xxx.cdninstagram.com/...jpg&#10;https://scontent-xxx.cdninstagram.com/...mp4"
+                      placeholder="貼上圖片/影片/YouTube 網址，每行一個...&#10;例如：&#10;https://scontent-xxx.cdninstagram.com/...jpg&#10;https://www.youtube.com/watch?v=xxxxx"
                       value={manualUrls}
                       onChange={e => setManualUrls(e.target.value)}
                       rows={4}
