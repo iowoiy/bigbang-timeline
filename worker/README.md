@@ -64,6 +64,10 @@ npm run deploy
 - `POST /api/migrate/events` - 匯入時間軸資料
 - `POST /api/migrate/social` - 匯入社群備份資料
 
+### 訪客記錄
+- `POST /api/visitors` - 記錄訪客（不需 API Key）
+- `GET /api/visitors` - 取得訪客記錄（需 API Key）
+
 ## 資料遷移
 
 ### 從 JSONBin 匯出資料
@@ -95,7 +99,29 @@ curl -X POST "https://bigbang-api.YOUR_DOMAIN.workers.dev/api/migrate/social" \
   -d @social_gdragon.json
 ```
 
+## 訪客記錄查詢
+
+```bash
+# 最近 10 筆訪客
+npx wrangler d1 execute bigbang-db --remote --command "SELECT id, author_id, ip, country, device, browser, datetime(timestamp/1000, 'unixepoch', '+8 hours') as time FROM visitors ORDER BY timestamp DESC LIMIT 10"
+
+# 今日訪客數
+npx wrangler d1 execute bigbang-db --remote --command "SELECT COUNT(*) as today FROM visitors WHERE timestamp > (strftime('%s','now','start of day')*1000)"
+
+# 各身份統計
+npx wrangler d1 execute bigbang-db --remote --command "SELECT author_id, COUNT(*) as count FROM visitors GROUP BY author_id ORDER BY count DESC"
+
+# 各國訪客統計
+npx wrangler d1 execute bigbang-db --remote --command "SELECT country, COUNT(*) as count FROM visitors GROUP BY country ORDER BY count DESC"
+
+# 各裝置統計
+npx wrangler d1 execute bigbang-db --remote --command "SELECT device, COUNT(*) as count FROM visitors GROUP BY device ORDER BY count DESC"
+
+# 特定日期的訪客
+npx wrangler d1 execute bigbang-db --remote --command "SELECT * FROM visitors WHERE date(timestamp/1000, 'unixepoch') = '2025-02-19' ORDER BY timestamp DESC"
+```
+
 ## 注意事項
 - GET 請求不需要 API Key
-- POST/PUT/DELETE 需要在 header 加上 `X-API-Key`
+- POST/PUT/DELETE 需要在 header 加上 `X-API-Key`（除了 POST /api/visitors）
 - CORS 已設定允許 `iowoiy.github.io` 和 `localhost`
