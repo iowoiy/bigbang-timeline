@@ -1028,7 +1028,7 @@ export default function MembershipArchive({ isAdmin, onBack }) {
                   )
                 ) : (
                   <div className="no-thumb">
-                    <Camera size={24} />
+                    <img src={`${import.meta.env.BASE_URL}bigbang-default.png`} alt="BIGBANG" />
                   </div>
                 )}
                 {item.media?.length > 1 && (
