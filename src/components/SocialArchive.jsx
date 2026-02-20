@@ -84,14 +84,32 @@ function formatDateTime(dateStr, timeStr) {
   return `${Number(y)}/${Number(m)}/${Number(d)} ${timeStr}`
 }
 
-// 取得社群備份用的 ImgBB API Key（有設定專用的就用專用的，沒有就用主要的）
-const SOCIAL_IMGBB_KEY = config.SOCIAL_IMGBB_API_KEY || config.IMGBB_API_KEY
+// 取得社群備份用的 ImgBB API Key（依成員分流，T.O.P 用獨立帳號）
+function getImgBBKey(member) {
+  if (member === 'T.O.P' && config.TOP_IMGBB_API_KEY) return config.TOP_IMGBB_API_KEY
+  return config.SOCIAL_IMGBB_API_KEY || config.IMGBB_API_KEY
+}
 
-// 上傳圖片到 ImgBB（社群備份專用）
-async function uploadToImgBB(file) {
+// 取得社群備份用的 Cloudinary 設定（依成員分流）
+function getCloudinaryConfig(member) {
+  if (member === 'T.O.P' && config.TOP_CLOUDINARY_CLOUD_NAME) {
+    return {
+      cloudName: config.TOP_CLOUDINARY_CLOUD_NAME,
+      preset: config.TOP_CLOUDINARY_PRESET,
+    }
+  }
+  return {
+    cloudName: config.SOCIAL_CLOUDINARY_CLOUD_NAME || config.CLOUDINARY_CLOUD_NAME,
+    preset: config.SOCIAL_CLOUDINARY_PRESET || config.CLOUDINARY_UPLOAD_PRESET,
+  }
+}
+
+// 上傳圖片到 ImgBB（社群備份專用，member 可選）
+async function uploadToImgBB(file, member) {
+  const key = getImgBBKey(member)
   const formData = new FormData()
   formData.append('image', file)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${SOCIAL_IMGBB_KEY}`, {
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, {
     method: 'POST',
     body: formData
   })
@@ -102,11 +120,12 @@ async function uploadToImgBB(file) {
   throw new Error('上傳失敗')
 }
 
-// 透過 URL 上傳圖片到 ImgBB（用於 IG 圖片，社群備份專用）
-async function uploadUrlToImgBB(imageUrl) {
+// 透過 URL 上傳圖片到 ImgBB（用於 IG 圖片，member 可選）
+async function uploadUrlToImgBB(imageUrl, member) {
+  const key = getImgBBKey(member)
   const formData = new FormData()
   formData.append('image', imageUrl)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${SOCIAL_IMGBB_KEY}`, {
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, {
     method: 'POST',
     body: formData
   })
@@ -117,10 +136,9 @@ async function uploadUrlToImgBB(imageUrl) {
   throw new Error('上傳失敗')
 }
 
-// 上傳圖片到 Cloudinary 作為備份
-async function uploadToCloudinary(imageUrl) {
-  const cloudName = config.SOCIAL_CLOUDINARY_CLOUD_NAME || config.CLOUDINARY_CLOUD_NAME
-  const preset = config.SOCIAL_CLOUDINARY_PRESET || config.CLOUDINARY_UPLOAD_PRESET
+// 上傳圖片到 Cloudinary 作為備份（member 可選）
+async function uploadToCloudinary(imageUrl, member) {
+  const { cloudName, preset } = getCloudinaryConfig(member)
   if (!cloudName || !preset) {
     console.warn('Cloudinary 未設定，跳過備份')
     return null
@@ -676,7 +694,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       showToast('同步中，檢查並上傳圖片...', 'info')
 
       const newMedia = data.media?.length > 0
-        ? await uploadMediaList(data.media, itemToSync.media || [])
+        ? await uploadMediaList(data.media, itemToSync.media || [], itemToSync.member)
         : []
 
       // 保留手動加的 YouTube 媒體
@@ -804,7 +822,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         setShowManualInput(false)
         showToast(`✅ 已抓取 ${mediaList.length} 個媒體，背景上傳中...`)
 
-        // 背景上傳圖片到 ImgBB
+        // 背景上傳圖片到 ImgBB（依成員分流）
         const imagesToUpload = previewMedia.filter(m => m.type === 'image')
         // 影片縮圖也要上傳
         const thumbnailsToUpload = previewMedia.filter(m => m.type === 'video' && m.thumbnail)
@@ -813,12 +831,12 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
         for (const m of imagesToUpload) {
           // 非同步上傳，不等待
-          uploadSingleImage(m.originalUrl, m.index)
+          uploadSingleImage(m.originalUrl, m.index, detectedMember)
         }
 
         // 上傳影片縮圖
         for (const m of thumbnailsToUpload) {
-          uploadVideoThumbnail(m.originalThumbnail, m.index)
+          uploadVideoThumbnail(m.originalThumbnail, m.index, detectedMember)
         }
       } else {
         // 抓取失敗，顯示手動輸入選項
@@ -881,12 +899,12 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       media: [...prev.media, ...newMedia]
     }))
 
-    // 背景上傳圖片
+    // 背景上傳圖片（依成員分流）
     const imagesToUpload = newMedia.filter(m => m.type === 'image')
     setUploadingCount(prev => prev + imagesToUpload.length)
 
     for (const m of imagesToUpload) {
-      uploadSingleImage(m.originalUrl, m.index)
+      uploadSingleImage(m.originalUrl, m.index, formData.member)
     }
 
     setManualUrls('')
@@ -895,12 +913,12 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   }
 
   // 單張圖片背景上傳（同時上傳 ImgBB + Cloudinary 備份）
-  async function uploadSingleImage(originalUrl, index) {
+  async function uploadSingleImage(originalUrl, index, member) {
     try {
-      // 同時上傳到 ImgBB 和 Cloudinary
+      // 同時上傳到 ImgBB 和 Cloudinary（依成員分流）
       const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadUrlToImgBB(originalUrl),
-        uploadToCloudinary(originalUrl)
+        uploadUrlToImgBB(originalUrl, member),
+        uploadToCloudinary(originalUrl, member)
       ])
 
       // 上傳成功，更新該圖片的 URL（主要用 ImgBB，備份用 Cloudinary）
@@ -934,12 +952,12 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   }
 
   // 影片縮圖背景上傳（同時上傳 ImgBB + Cloudinary 備份）
-  async function uploadVideoThumbnail(originalThumbnailUrl, index) {
+  async function uploadVideoThumbnail(originalThumbnailUrl, index, member) {
     try {
-      // 同時上傳到 ImgBB 和 Cloudinary
+      // 同時上傳到 ImgBB 和 Cloudinary（依成員分流）
       const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadUrlToImgBB(originalThumbnailUrl),
-        uploadToCloudinary(originalThumbnailUrl)
+        uploadUrlToImgBB(originalThumbnailUrl, member),
+        uploadToCloudinary(originalThumbnailUrl, member)
       ])
 
       // 上傳成功，更新該影片的縮圖 URL
@@ -987,8 +1005,8 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           const url = URL.createObjectURL(file)
           newMedia.push({ url, type: 'video', localFile: file })
         } else {
-          // 圖片上傳到 ImgBB
-          const url = await uploadToImgBB(file)
+          // 圖片上傳到 ImgBB（依成員分流）
+          const url = await uploadToImgBB(file, formData.member)
           newMedia.push({ url, type: 'image' })
         }
       }
@@ -1125,8 +1143,9 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
   // 上傳媒體列表（智慧同步：檢查現有備份是否可用，只上傳壞掉或新的圖）
   // existingMedia: 現有的已備份媒體列表（可選）
+  // member: 成員名稱（用於分流圖源，如 T.O.P 獨立帳號）
   // ImgBB 上傳成功就回傳，Cloudinary 在背景上傳
-  async function uploadMediaList(mediaList, existingMedia = []) {
+  async function uploadMediaList(mediaList, existingMedia = [], member) {
     const result = []
     const cloudinaryTasks = [] // 背景上傳任務
 
@@ -1167,7 +1186,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         // 需要上傳新圖片
         try {
           console.log(`📤 上傳圖片 ${i + 1}...`)
-          const imgbbUrl = await uploadUrlToImgBB(m.url)
+          const imgbbUrl = await uploadUrlToImgBB(m.url, member)
           const mediaItem = {
             url: imgbbUrl,
             type: 'image'
@@ -1177,7 +1196,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           // Cloudinary 背景上傳（非阻塞）
           const itemIndex = result.length - 1
           cloudinaryTasks.push(
-            uploadToCloudinary(m.url).then(cloudinaryUrl => {
+            uploadToCloudinary(m.url, member).then(cloudinaryUrl => {
               if (cloudinaryUrl) {
                 result[itemIndex].backupUrl = cloudinaryUrl
               }
@@ -1226,12 +1245,12 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           // 需要上傳新縮圖
           try {
             console.log(`📤 上傳影片 ${i + 1} 縮圖...`)
-            const imgbbUrl = await uploadUrlToImgBB(m.thumbnail)
+            const imgbbUrl = await uploadUrlToImgBB(m.thumbnail, member)
             videoItem.thumbnail = imgbbUrl
 
             // Cloudinary 背景上傳
             cloudinaryTasks.push(
-              uploadToCloudinary(m.thumbnail).then(cloudinaryUrl => {
+              uploadToCloudinary(m.thumbnail, member).then(cloudinaryUrl => {
                 if (cloudinaryUrl) {
                   videoItem.thumbnailBackupUrl = cloudinaryUrl
                 }
@@ -1343,8 +1362,8 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             }
             console.log(`✅ ${item.id} 影片 URL 已更新（保留 thumbnail）`)
           } else {
-            // 智慧同步：檢查現有備份，只上傳壞掉或新的圖
-            const newMedia = await uploadMediaList(data.media, item.media || [])
+            // 智慧同步：檢查現有備份，只上傳壞掉或新的圖（依成員分流）
+            const newMedia = await uploadMediaList(data.media, item.media || [], item.member)
 
             // 再次檢查是否已取消（上傳後）
             if (batchCancelRef.current) {

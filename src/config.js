@@ -39,6 +39,11 @@ const config = {
   MEMBERSHIP_IMGBB_API_KEY: '5ba49f2d518646b1d60d3bb5749ffd18',
   MEMBERSHIP_CLOUDINARY_CLOUD_NAME: 'dqag3qras',
   MEMBERSHIP_CLOUDINARY_PRESET: 'bigbang-membership',
+
+  // T.O.P 社群備份專用（資料量龐大，獨立存放）
+  TOP_IMGBB_API_KEY: '0b1496efe89ea09d0615c315051728a5',
+  TOP_CLOUDINARY_CLOUD_NAME: 'dgkgt9w1q',
+  TOP_CLOUDINARY_PRESET: 'teamtttop',
 }
 
 export default config
