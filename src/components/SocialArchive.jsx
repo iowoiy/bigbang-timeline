@@ -9,6 +9,7 @@ import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnai
 import { formatDate, formatDateTime } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
 import { socialApi } from '../utils/api'
+import './ArchiveBase.css'
 import './SocialArchive.css'
 
 // 貼文類型
@@ -1245,7 +1246,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
   if (loading) {
     return (
-      <div className="social-archive-loading">
+      <div className="archive-page-loading">
         <div className="loading-spinner"></div>
         <p>載入中...</p>
       </div>
@@ -1253,9 +1254,9 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   }
 
   return (
-    <div className="social-archive">
+    <div className="social-archive archive-page">
       {/* Header */}
-      <header className="social-header">
+      <header className="archive-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h1>📱 社群備份</h1>
         </div>
@@ -1270,7 +1271,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       </header>
 
       {/* Filters */}
-      <div className="social-filters">
+      <div className="archive-filters">
         <div className="filter-row">
           {/* 成員篩選 */}
           <select
@@ -1402,7 +1403,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               return (
                 <div
                   key={vRow.key}
-                  className={`social-content ${viewMode}`}
+                  className={`archive-content ${viewMode}`}
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -1666,7 +1667,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="social-modal" onClick={e => e.stopPropagation()}>
+          <div className="archive-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingItem ? '編輯備份' : '新增備份'}</h2>
               <button className="close-btn" onClick={() => setShowModal(false)}>

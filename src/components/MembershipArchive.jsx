@@ -7,6 +7,7 @@ import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnai
 import { formatDate, formatDateTime } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
 import { membershipApi } from '../utils/api'
+import './ArchiveBase.css'
 import './MembershipArchive.css'
 
 // HLS 影片播放元件（支援 .m3u8，動態載入 hls.js）
@@ -862,7 +863,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
   if (loading) {
     return (
-      <div className="membership-loading">
+      <div className="archive-page-loading">
         <div className="loading-spinner"></div>
         <p>載入中...</p>
       </div>
@@ -870,9 +871,9 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   }
 
   return (
-    <div className="membership-archive">
+    <div className="membership-archive archive-page">
       {/* Header */}
-      <header className="membership-header">
+      <header className="archive-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h1>🔒 會員備份</h1>
         </div>
@@ -892,7 +893,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       </header>
 
       {/* Filters */}
-      <div className="membership-filters">
+      <div className="archive-filters">
         <div className="filter-row">
           {/* 成員篩選 */}
           <select
@@ -966,7 +967,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               return (
                 <div
                   key={vRow.key}
-                  className={`membership-content ${viewMode}`}
+                  className={`archive-content ${viewMode}`}
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -1193,7 +1194,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="membership-modal" onClick={e => e.stopPropagation()}>
+          <div className="archive-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingItem ? '編輯備份' : '新增備份'}</h2>
               <button className="close-btn" onClick={() => setShowModal(false)}>
@@ -1442,7 +1443,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       {/* b.stage 匯入 Modal */}
       {showImportModal && (
         <div className="modal-overlay" onClick={() => { if (!importPhase || importPhase === 'done') { setShowImportModal(false); setImportPhase(null); setBstageToken(''); setImportLog([]) } }}>
-          <div className="membership-modal import-modal" onClick={e => e.stopPropagation()}>
+          <div className="archive-modal import-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2><Download size={18} /> 從 b.stage 匯入</h2>
               <button className="close-btn" onClick={() => {

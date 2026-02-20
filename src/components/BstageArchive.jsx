@@ -5,6 +5,7 @@ import { getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
 import { bstageApi } from '../utils/api'
+import './ArchiveBase.css'
 import './BstageArchive.css'
 
 export default function BstageArchive({ isAdmin, onBack }) {
@@ -437,7 +438,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
 
   if (loading) {
     return (
-      <div className="bstage-archive-loading">
+      <div className="archive-page-loading">
         <div className="loading-spinner"></div>
         <p>載入中...</p>
       </div>
@@ -445,9 +446,9 @@ export default function BstageArchive({ isAdmin, onBack }) {
   }
 
   return (
-    <div className="bstage-archive">
+    <div className="bstage-archive archive-page">
       {/* Header */}
-      <header className="bstage-header">
+      <header className="archive-header">
         <button className="back-btn" onClick={onBack}>← 返回時間軸</button>
         <h1>⭐ b.stage 備份</h1>
         <button className="add-btn" onClick={openAddModal} title="新增備份">
@@ -456,7 +457,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
       </header>
 
       {/* Filters */}
-      <div className="bstage-filters">
+      <div className="archive-filters">
         <div className="filter-row">
           {/* 成員篩選 */}
           <select
@@ -504,7 +505,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
       </div>
 
       {/* Archive Grid/List */}
-      <div className={`bstage-content ${viewMode}`}>
+      <div className={`archive-content ${viewMode}`}>
         {filteredArchives.length === 0 ? (
           <div className="empty-state">
             <Camera size={48} />
@@ -724,7 +725,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="bstage-modal" onClick={e => e.stopPropagation()}>
+          <div className="archive-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingItem ? '編輯備份' : '新增備份'}</h2>
               <button className="close-btn" onClick={() => setShowModal(false)}>
