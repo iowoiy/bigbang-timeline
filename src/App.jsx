@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
-import { RefreshCw, Plus, X, ChevronUp, Check, AlertCircle, Sun, Moon, Menu } from 'lucide-react'
+import { RefreshCw, Plus, ChevronUp, Check, AlertCircle, Sun, Moon } from 'lucide-react'
 import ImageCarousel from './components/ImageCarousel'
 import EventCard from './components/EventCard'
 import EventModal from './components/EventModal'
 import TimelineFilters from './components/TimelineFilters'
+import NavMenu from './components/NavMenu'
 import { AUTHORS, FAN_SINCE, authorName, authorEmoji, authorColor } from './data/authors'
 import { DEFAULT_EVENTS } from './data/defaultEvents'
 import { isImageUrl } from './utils/media'
@@ -37,15 +38,12 @@ export default function App() {
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState(null)
 
-  const [expandedId, setExpandedId] = useState(null) // 展開留言的卡片 ID
   const [showScrollTop, setShowScrollTop] = useState(false) // 回到頂部按鈕
   const [selectedYear, setSelectedYear] = useState(null) // 選中的年份
   const [yearSortDesc, setYearSortDesc] = useState(true) // 年份排序：true = 新到舊（降序）
-  const [inlineNote, setInlineNote] = useState('') // 內嵌留言輸入
   const [imageSlider, setImageSlider] = useState({ open: false, images: [], index: 0 }) // 圖片輪播
   const [lightMode, setLightMode] = useState(() => localStorage.getItem('lightMode') === 'true') // 淺色模式
   const [currentPage, setCurrentPage] = useState('timeline') // 頁面切換：'timeline' | 'social' | 'membership'
-  const [menuOpen, setMenuOpen] = useState(false) // hamburger menu 開關
   const [migrating, setMigrating] = useState(false)
   const [migrateProgress, setMigrateProgress] = useState({ current: 0, total: 0, failed: 0 })
 
@@ -259,58 +257,6 @@ export default function App() {
     setModal(null)
   }
 
-  // 內嵌留言儲存（直接在時間軸上）
-  const saveInlineNote = (eventId) => {
-    if (!inlineNote.trim()) return
-    const ev = events.find(e => e.id === eventId)
-    if (!ev) return
-    const newNote = { text: inlineNote.trim(), author: me, ts: Date.now() }
-    // editLog 只保留「新增」和「最後編輯」
-    const createLog = (ev.editLog || []).find(log => log.action === '新增')
-    const newEditLog = createLog
-      ? [createLog, { author: me, action: '留言', ts: Date.now() }]
-      : [{ author: me, action: '留言', ts: Date.now() }]
-    const updated = {
-      ...ev,
-      notes: [...(ev.notes || []), newNote],
-      editLog: newEditLog
-    }
-    persistEvent(updated, false)
-    setInlineNote('')
-    flash('留言已送出', 'success')
-  }
-
-  // 展開/收起留言
-  const toggleExpand = (ev, e) => {
-    e.stopPropagation()
-    if (expandedId === ev.id) {
-      setExpandedId(null)
-      setInlineNote('')
-    } else {
-      setExpandedId(ev.id)
-      setInlineNote('')
-    }
-  }
-
-  // 刪除內嵌留言
-  const deleteInlineNote = (eventId, noteIndex) => {
-    const ev = events.find(e => e.id === eventId)
-    if (!ev) return
-    const newNotes = ev.notes.filter((_, i) => i !== noteIndex)
-    // editLog 只保留「新增」和「最後編輯」
-    const createLog = (ev.editLog || []).find(log => log.action === '新增')
-    const newEditLog = createLog
-      ? [createLog, { author: me, action: '刪除留言', ts: Date.now() }]
-      : [{ author: me, action: '刪除留言', ts: Date.now() }]
-    const updated = {
-      ...ev,
-      notes: newNotes,
-      editLog: newEditLog
-    }
-    persistEvent(updated, false)
-    flash('已刪除留言', 'success')
-  }
-
   // ========== 選擇身份 ==========
   if (!me) {
     return (
@@ -393,27 +339,7 @@ export default function App() {
             {lightMode ? <Moon size={16} /> : <Sun size={16} />}
           </button>
           <button onClick={openNew} className="add-btn"><Plus size={20} /></button>
-          <div className="nav-menu-wrapper">
-            <button onClick={() => setMenuOpen(!menuOpen)} className="hamburger-btn" title="選單">
-              <Menu size={18} />
-            </button>
-            {menuOpen && (
-              <>
-                <div className="nav-menu-overlay" onClick={() => setMenuOpen(false)} />
-                <div className="nav-menu">
-                  <button className={`nav-menu-item ${currentPage === 'timeline' ? 'active' : ''}`} onClick={() => { setCurrentPage('timeline'); setMenuOpen(false) }}>
-                    <span>📅</span> 時間軸
-                  </button>
-                  <button className={`nav-menu-item ${currentPage === 'social' ? 'active' : ''}`} onClick={() => { setCurrentPage('social'); setMenuOpen(false) }}>
-                    <span>📷</span> 社群備份
-                  </button>
-                  <button className={`nav-menu-item ${currentPage === 'membership' ? 'active' : ''}`} onClick={() => { setCurrentPage('membership'); setMenuOpen(false) }}>
-                    <span>🔒</span> 會員備份
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <NavMenu currentPage={currentPage} setCurrentPage={setCurrentPage} />
         </div>
       </div>
 
@@ -485,24 +411,6 @@ export default function App() {
           flash={flash}
         />
       )}
-
-      {/* 底部留言輸入條 - 暫時隱藏
-      {expandedId && (
-        <div className="comment-bar">
-          <div className="comment-bar-inner">
-            <input
-              value={inlineNote}
-              onChange={e => setInlineNote(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && saveInlineNote(expandedId)}
-              placeholder="寫點什麼..."
-              autoFocus
-            />
-            <button onClick={() => saveInlineNote(expandedId)}>送出</button>
-            <button onClick={() => { setExpandedId(null); setInlineNote('') }} className="comment-bar-close"><X size={14} /></button>
-          </div>
-        </div>
-      )}
-      */}
 
       {/* 懸浮按鈕：回到頂部 */}
       {showScrollTop && (

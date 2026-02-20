@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Plus, X, Image, Film, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
+import { Plus, X, Image, Film, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight } from 'lucide-react'
+import NavMenu from './NavMenu'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
 import { MEMBERS, getMemberColor, genId } from '../utils/members'
@@ -74,7 +75,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
-  const [navMenuOpen, setNavMenuOpen] = useState(false)
 
   // 篩選
   const [filterMember, setFilterMember] = useState('all')
@@ -1264,27 +1264,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             <Plus size={20} />
           </button>
           {setCurrentPage && (
-            <div className="nav-menu-wrapper">
-              <button onClick={() => setNavMenuOpen(!navMenuOpen)} className="hamburger-btn" title="選單">
-                <Menu size={18} />
-              </button>
-              {navMenuOpen && (
-                <>
-                  <div className="nav-menu-overlay" onClick={() => setNavMenuOpen(false)} />
-                  <div className="nav-menu">
-                    <button className={`nav-menu-item ${currentPage === 'timeline' ? 'active' : ''}`} onClick={() => { setCurrentPage('timeline'); setNavMenuOpen(false) }}>
-                      <span>📅</span> 時間軸
-                    </button>
-                    <button className={`nav-menu-item ${currentPage === 'social' ? 'active' : ''}`} onClick={() => { setCurrentPage('social'); setNavMenuOpen(false) }}>
-                      <span>📷</span> 社群備份
-                    </button>
-                    <button className={`nav-menu-item ${currentPage === 'membership' ? 'active' : ''}`} onClick={() => { setCurrentPage('membership'); setNavMenuOpen(false) }}>
-                      <span>🔒</span> 會員備份
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <NavMenu currentPage={currentPage} setCurrentPage={setCurrentPage} />
           )}
         </div>
       </header>

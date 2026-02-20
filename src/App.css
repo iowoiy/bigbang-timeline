@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
-
 /* Lazy loading fallback */
 .lazy-loading {
   display: flex;
@@ -187,17 +185,6 @@ a {
   display: none;
 }
 
-.identity-bar {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  background: rgba(26, 26, 26, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
 /* 手機版：頂部工具列變成 header 樣式 */
 @media (max-width: 600px) {
   .top-bar {
@@ -217,13 +204,6 @@ a {
     font-size: 18px;
     color: #E5A500;
     letter-spacing: 0.15em;
-  }
-
-  .identity-bar {
-    padding: 4px 8px;
-    background: transparent;
-    border: none;
-    backdrop-filter: none;
   }
 }
 
@@ -281,19 +261,6 @@ a {
 
 .add-btn:active {
   transform: scale(0.95);
-}
-
-.switch-btn {
-  background: none;
-  border: none;
-  color: #555;
-  font-size: 11px;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.switch-btn:hover {
-  color: #888;
 }
 
 /* ========== 篩選下拉選單 ========== */
@@ -409,27 +376,6 @@ a {
 .theme-btn:hover {
   color: #E5A500;
   background: rgba(212, 175, 55, 0.15);
-}
-
-/* 社群備份按鈕 */
-.social-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  border-radius: 50%;
-  color: #888;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.social-btn:hover {
-  color: #E1306C;
-  background: rgba(225, 48, 108, 0.15);
 }
 
 /* ========== Hamburger Menu ========== */
@@ -922,140 +868,6 @@ textarea.form-input {
   padding: 0 4px;
 }
 
-/* ========== Inline Comments (展開留言區) ========== */
-.inline-comments {
-  background: rgba(255, 255, 255, 0.02);
-  border-left: 2px solid rgba(212, 175, 55, 0.2);
-  padding: 8px 12px;
-  margin-left: 52px;
-  margin-bottom: 8px;
-  animation: fadeInUp 0.25s ease-out;
-}
-
-.inline-comment-list {
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.inline-comment-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-  font-size: 12px;
-  animation: fadeIn 0.3s ease-out backwards;
-}
-
-.inline-comment-item:nth-child(1) { animation-delay: 0.05s; }
-.inline-comment-item:nth-child(2) { animation-delay: 0.1s; }
-.inline-comment-item:nth-child(3) { animation-delay: 0.15s; }
-.inline-comment-item:nth-child(4) { animation-delay: 0.2s; }
-.inline-comment-item:nth-child(5) { animation-delay: 0.25s; }
-
-.inline-comment-text {
-  flex: 1;
-  color: #aaa;
-}
-
-.inline-comment-time {
-  font-size: 10px;
-  color: #444;
-  flex-shrink: 0;
-}
-
-.inline-comment-delete {
-  background: none;
-  border: none;
-  color: #555;
-  font-size: 10px;
-  padding: 2px 4px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.inline-comment-item:hover .inline-comment-delete {
-  opacity: 1;
-}
-
-.inline-comment-delete:hover {
-  color: #E63946;
-}
-
-/* ========== 底部留言輸入條 ========== */
-.comment-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #1A1A1A;
-  border-top: 1px solid rgba(212, 175, 55, 0.2);
-  padding: 12px 16px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  z-index: 8000;
-  animation: slideUp 0.2s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.comment-bar-inner {
-  max-width: 860px;
-  margin: 0 auto;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.comment-bar input {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  padding: 10px 16px;
-  font-size: 14px;
-  color: #F5F5F0;
-  outline: none;
-}
-
-.comment-bar input:focus {
-  border-color: rgba(212, 175, 55, 0.4);
-}
-
-.comment-bar button {
-  padding: 10px 20px;
-  background: #E5A500;
-  border: none;
-  border-radius: 20px;
-  color: #0A0A0A;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.comment-bar button:hover {
-  filter: brightness(1.1);
-}
-
-.comment-bar-close {
-  background: transparent !important;
-  color: #666 !important;
-  padding: 10px !important;
-  font-size: 16px !important;
-}
-
-.comment-bar-close:hover {
-  color: #999 !important;
-}
-
 .divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.06);
@@ -1476,11 +1288,6 @@ input[type="date"].form-input::after {
     padding: 45px 16px 20px;
   }
 
-  .identity-bar {
-    padding: 8px 12px;
-    gap: 6px;
-  }
-
   /* 事件卡片 - 更好的觸控體驗 */
   .event-card {
     padding: 16px 14px;
@@ -1633,21 +1440,6 @@ input[type="date"].form-input::after {
   .card-icon-btn {
     width: 36px;
     height: 36px;
-    font-size: 16px;
-  }
-
-  /* 內嵌留言區 */
-  .inline-comments {
-    margin-left: 40px;
-    padding: 10px 12px;
-  }
-
-  .inline-comment-delete {
-    opacity: 0.5;
-  }
-
-  /* 底部留言條 */
-  .comment-bar input {
     font-size: 16px;
   }
 
@@ -1992,20 +1784,13 @@ body.light-mode .top-bar {
 
 body.light-mode .sync-btn,
 body.light-mode .theme-btn,
-body.light-mode .social-btn,
 body.light-mode .hamburger-btn {
   color: #666;
 }
 
 body.light-mode .theme-btn,
-body.light-mode .social-btn,
 body.light-mode .hamburger-btn {
   background: rgba(0, 0, 0, 0.05);
-}
-
-body.light-mode .social-btn:hover {
-  color: #E1306C;
-  background: rgba(225, 48, 108, 0.12);
 }
 
 body.light-mode .hamburger-btn:hover {
@@ -2223,11 +2008,6 @@ body.light-mode .image-slider-thumb {
 
 body.light-mode .image-slider-thumb.active {
   border-color: #FFD000;
-}
-
-body.light-mode .inline-comments {
-  background: rgba(0, 0, 0, 0.03);
-  border-left-color: #FFD000;
 }
 
 body.light-mode .link-tag {
