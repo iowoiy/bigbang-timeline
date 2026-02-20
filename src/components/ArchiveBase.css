@@ -415,7 +415,7 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 9000;
   padding: 16px;
@@ -431,6 +431,7 @@
   max-width: 560px;
   max-height: 85vh;
   overflow-y: auto;
+  margin: auto;
   animation: fadeInScale 0.3s ease-out;
 }
 

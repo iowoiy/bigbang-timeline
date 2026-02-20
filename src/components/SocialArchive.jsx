@@ -19,26 +19,117 @@ const POST_TYPES = [
   { id: 'reels', label: 'Reels', icon: '🎬', color: '#F77737' },
 ]
 
-// IG 帳號對應
+// IG 帳號對應（支援多帳號，含額外帳號的類型與日期格式設定）
 const IG_ACCOUNTS = {
-  'G-Dragon': 'xxxibgdrgn',
-  'T.O.P': 'ttt',
-  '太陽': '__youngbae__',
-  '大聲': 'd_lable_official',
-  '勝利': '',
-  '全員': 'bigbangofficial',
+  'G-Dragon': { main: 'xxxibgdrgn' },
+  'T.O.P': {
+    main: 'ttt',
+    extra: [
+      { username: 'tttopost', type: 'post', dateFormat: 'auto' },                        // 支援 6digits (150630) 或 ISO (2019-07-14)
+      { username: 'top.ttt.story', type: 'story', dateFormat: 'auto', isPrefix: true },   // top.ttt.story2015, top.ttt.story2019 等各年度帳號
+    ]
+  },
+  '太陽': { main: '__youngbae__' },
+  '大聲': { main: 'd_lable_official' },
+  '勝利': { main: '' },
+  '全員': { main: 'bigbangofficial' },
 }
 
 // 根據 IG 帳號判斷成員
 function detectMemberFromUsername(username) {
   if (!username) return '全員'
   const lowerUsername = username.toLowerCase()
-  for (const [member, igAccount] of Object.entries(IG_ACCOUNTS)) {
-    if (igAccount && lowerUsername === igAccount.toLowerCase()) {
+  for (const [member, account] of Object.entries(IG_ACCOUNTS)) {
+    if (account.main && lowerUsername === account.main.toLowerCase()) {
       return member
+    }
+    if (account.extra) {
+      for (const ex of account.extra) {
+        const exName = ex.username.toLowerCase()
+        if (ex.isPrefix ? lowerUsername.startsWith(exName) : lowerUsername === exName) {
+          return member
+        }
+      }
     }
   }
   return '全員'
+}
+
+// 根據 IG 帳號取得額外帳號設定（類型、日期格式）
+function getExtraAccountConfig(username) {
+  if (!username) return null
+  const lowerUsername = username.toLowerCase()
+  for (const account of Object.values(IG_ACCOUNTS)) {
+    if (account.extra) {
+      for (const ex of account.extra) {
+        const exName = ex.username.toLowerCase()
+        if (ex.isPrefix ? lowerUsername.startsWith(exName) : lowerUsername === exName) {
+          return ex
+        }
+      }
+    }
+  }
+  return null
+}
+
+// 從貼文內文解析日期（針對特殊帳號）
+// dateFormat: '6digits' | 'iso' | 'auto'（auto = 先試 ISO 再試 6digits）
+function parseDateFromCaption(caption, dateFormat) {
+  if (!caption || !dateFormat) return null
+
+  function tryIso(text) {
+    // 支援 YYYY-MM-DD 或 YYYY-M-D（不補零）
+    const match = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+    if (match) {
+      const y = match[1]
+      const m = match[2].padStart(2, '0')
+      const d = match[3].padStart(2, '0')
+      return `${y}-${m}-${d}`
+    }
+    return null
+  }
+
+  function try6digits(text) {
+    const match = text.match(/\b(\d{6})\b/)
+    if (match) {
+      const raw = match[1]
+      const yy = parseInt(raw.substring(0, 2), 10)
+      const mm = raw.substring(2, 4)
+      const dd = raw.substring(4, 6)
+      const year = yy >= 50 ? 1900 + yy : 2000 + yy
+      return `${year}-${mm}-${dd}`
+    }
+    return null
+  }
+
+  if (dateFormat === 'auto') {
+    // 優先匹配 ISO（較明確），再試 6digits
+    return tryIso(caption) || try6digits(caption)
+  } else if (dateFormat === 'iso') {
+    return tryIso(caption)
+  } else if (dateFormat === '6digits') {
+    return try6digits(caption)
+  }
+  return null
+}
+
+// 嘗試從 IG URL 提取用戶名（債用方案）
+function extractUsernameFromIgUrl(url) {
+  if (!url) return null
+  // instagram.com/stories/USERNAME/ID
+  const storyMatch = url.match(/instagram\.com\/stories\/([^\/]+)\//)
+  if (storyMatch) return storyMatch[1]
+  // instagram.com/USERNAME/p/SHORTCODE/  or /reel/ /reels/ /tv/
+  const match = url.match(/instagram\.com\/([^\/]+)\/(?:p|reel|reels|tv)\//)
+  if (match && !['p', 'reel', 'reels', 'tv', 'stories', 'explore'].includes(match[1])) {
+    return match[1]
+  }
+  return null
+}
+
+// 結合多重來源解析用戶名（API 回傳 > URL 提取）
+function resolveUsername(ownerUsername, igUrl) {
+  return ownerUsername || extractUsernameFromIgUrl(igUrl) || null
 }
 
 // 從 IG 連結抓取完整資訊（使用 Cloudflare Worker）
@@ -521,20 +612,40 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       const existingYouTube = (itemToSync.media || []).filter(m => m.type === 'youtube')
       const mergedMedia = [...newMedia, ...existingYouTube]
 
-      // 更新日期時間（UTC → 台灣時間 UTC+8）
+      // 檢查是否為特殊帳號（多重來源偵測）
+      const syncResolved = resolveUsername(data.owner?.username, itemToSync.igUrl)
+      const syncDetectedMember = detectMemberFromUsername(syncResolved)
+      const syncExtraConfig = getExtraAccountConfig(syncResolved)
+
+      // 更新日期時間
       let syncDate = itemToSync.date
       let syncTime = itemToSync.time || ''
-      if (data.date) {
+      // 特殊帳號：從內文抓日期
+      if (syncExtraConfig?.dateFormat && data.caption) {
+        const parsedDate = parseDateFromCaption(data.caption, syncExtraConfig.dateFormat)
+        if (parsedDate) syncDate = parsedDate
+      } else if (data.date) {
+        // 一般帳號：UTC → 台灣時間 UTC+8
         const utc = new Date(data.date)
         const tw = new Date(utc.getTime() + 8 * 60 * 60 * 1000)
         syncDate = `${tw.getUTCFullYear()}-${String(tw.getUTCMonth() + 1).padStart(2, '0')}-${String(tw.getUTCDate()).padStart(2, '0')}`
         syncTime = `${String(tw.getUTCHours()).padStart(2, '0')}:${String(tw.getUTCMinutes()).padStart(2, '0')}`
       }
 
+      // Fallback：帳號未識別時，嘗試從內文解析日期
+      if (!syncExtraConfig && syncDetectedMember === '全員' && data.caption) {
+        const fallbackDate = parseDateFromCaption(data.caption, 'auto')
+        if (fallbackDate) {
+          syncDate = fallbackDate
+          syncTime = ''
+        }
+      }
+
       const updatedItem = {
         ...itemToSync,
         media: mergedMedia,
         caption: data.caption || itemToSync.caption,
+        type: syncExtraConfig?.type || itemToSync.type,
         date: syncDate,
         time: syncTime,
         updatedAt: Date.now()
@@ -602,17 +713,35 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       const data = await fetchIGData(formData.igUrl)
 
       if (data.success && data.media?.length > 0) {
-        // 自動填入抓到的資料
-        const detectedMember = detectMemberFromUsername(data.owner?.username)
+        // 自動填入抓到的資料（多重來源偵測用戶名）
+        const resolved = resolveUsername(data.owner?.username, formData.igUrl)
+        const detectedMember = detectMemberFromUsername(resolved)
+        const extraConfig = getExtraAccountConfig(resolved)
+
         // IG timestamp 是 UTC，轉換為台灣時間 (UTC+8) 來儲存日期和時間
         let postDate = formData.date
         let postTime = ''
-        if (data.date) {
+
+        // 特殊帳號：從內文抓日期
+        if (extraConfig?.dateFormat && data.caption) {
+          const parsedDate = parseDateFromCaption(data.caption, extraConfig.dateFormat)
+          if (parsedDate) postDate = parsedDate
+        } else if (data.date) {
           const utc = new Date(data.date)
           const tw = new Date(utc.getTime() + 8 * 60 * 60 * 1000)
           postDate = `${tw.getUTCFullYear()}-${String(tw.getUTCMonth() + 1).padStart(2, '0')}-${String(tw.getUTCDate()).padStart(2, '0')}`
           postTime = `${String(tw.getUTCHours()).padStart(2, '0')}:${String(tw.getUTCMinutes()).padStart(2, '0')}`
         }
+
+        // Fallback：帳號未識別時，嘗試從內文解析日期
+        if (!extraConfig && detectedMember === '全員' && data.caption) {
+          const fallbackDate = parseDateFromCaption(data.caption, 'auto')
+          if (fallbackDate) {
+            postDate = fallbackDate
+            postTime = ''
+          }
+        }
+
         const mediaList = data.media || []
 
         // 先用原始 URL 顯示預覽，標記為 uploading
@@ -629,7 +758,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
         setFormData(prev => ({
           ...prev,
-          type: data.type || prev.type,
+          type: extraConfig?.type || data.type || prev.type,
           member: detectedMember,
           date: postDate,
           time: postTime || prev.time,
@@ -1163,14 +1292,32 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         }
 
         if (data.success && data.media?.length > 0) {
-          // 更新日期時間（UTC → 台灣時間 UTC+8）
+          // 檢查是否為特殊帳號（多重來源偵測）
+          const batchResolved = resolveUsername(data.owner?.username, item.igUrl)
+          const batchDetectedMember = detectMemberFromUsername(batchResolved)
+          const batchExtraConfig = getExtraAccountConfig(batchResolved)
+
+          // 更新日期時間
           let batchDate = item.date
           let batchTime = item.time || ''
-          if (data.date) {
+          // 特殊帳號：從內文抓日期
+          if (batchExtraConfig?.dateFormat && data.caption) {
+            const parsedDate = parseDateFromCaption(data.caption, batchExtraConfig.dateFormat)
+            if (parsedDate) batchDate = parsedDate
+          } else if (data.date) {
             const utc = new Date(data.date)
             const tw = new Date(utc.getTime() + 8 * 60 * 60 * 1000)
             batchDate = `${tw.getUTCFullYear()}-${String(tw.getUTCMonth() + 1).padStart(2, '0')}-${String(tw.getUTCDate()).padStart(2, '0')}`
             batchTime = `${String(tw.getUTCHours()).padStart(2, '0')}:${String(tw.getUTCMinutes()).padStart(2, '0')}`
+          }
+
+          // Fallback：帳號未識別時，嘗試從內文解析日期
+          if (!batchExtraConfig && batchDetectedMember === '全員' && data.caption) {
+            const fallbackDate = parseDateFromCaption(data.caption, 'auto')
+            if (fallbackDate) {
+              batchDate = fallbackDate
+              batchTime = ''
+            }
           }
 
           let updatedItem
@@ -1180,6 +1327,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             updatedItem = {
               ...item,
               media: mergedMedia,
+              type: batchExtraConfig?.type || item.type,
               date: batchDate,
               time: batchTime,
               updatedAt: Date.now()
@@ -1202,6 +1350,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               ...item,
               media: mergedMedia,
               caption: data.caption || item.caption,
+              type: batchExtraConfig?.type || item.type,
               date: batchDate,
               time: batchTime,
               updatedAt: Date.now()
