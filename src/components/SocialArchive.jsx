@@ -7,6 +7,7 @@ import { MEMBERS, getMemberColor, genId } from '../utils/members'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
+import { socialApi } from '../utils/api'
 import './SocialArchive.css'
 
 // 貼文類型
@@ -130,11 +131,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   async function loadArchives() {
     setLoading(true)
     try {
-      // 從 D1 API 載入所有社群備份
-      const res = await fetch(`${config.API_URL}/social`)
-      if (!res.ok) throw new Error('載入失敗')
-      const data = await res.json()
-      // 資料已按 updated_at DESC 排序
+      const data = await socialApi.load()
       setArchives(data)
     } catch (err) {
       console.error('載入失敗', err)
@@ -142,44 +139,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  // 建立新的社群備份
-  async function createArchive(item) {
-    const res = await fetch(`${config.API_URL}/social`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.API_KEY
-      },
-      body: JSON.stringify(item)
-    })
-    if (!res.ok) throw new Error('建立失敗')
-    return res.json()
-  }
-
-  // 更新社群備份
-  async function updateArchive(item) {
-    const res = await fetch(`${config.API_URL}/social/${item.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.API_KEY
-      },
-      body: JSON.stringify(item)
-    })
-    if (!res.ok) throw new Error('更新失敗')
-    return res.json()
-  }
-
-  // 刪除社群備份
-  async function deleteArchiveById(id) {
-    const res = await fetch(`${config.API_URL}/social/${id}`, {
-      method: 'DELETE',
-      headers: { 'X-API-Key': config.API_KEY }
-    })
-    if (!res.ok) throw new Error('刪除失敗')
-    return res.json()
   }
 
   // 儲存（相容舊邏輯，用於批次更新後重新載入）
@@ -586,7 +545,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           a.id === itemId ? updatedItem : a
         )
         // 存到 D1
-        updateArchive(updatedItem)
+        socialApi.update(updatedItem)
           .catch(err => console.warn('D1 儲存失敗:', err))
         return newArchives
       })
@@ -942,11 +901,11 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     try {
       if (editingItem) {
         // 更新現有
-        await updateArchive(item)
+        await socialApi.update(item)
         setArchives(archives.map(a => a.id === editingItem.id ? item : a))
       } else {
         // 新增
-        await createArchive(item)
+        await socialApi.create(item)
         setArchives([item, ...archives])
       }
       showToast('已儲存')
@@ -976,7 +935,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     if (!confirmDelete) return
 
     try {
-      await deleteArchiveById(id)
+      await socialApi.delete(id)
       setArchives(archives.filter(a => a.id !== id))
       showToast('已刪除')
     } catch (err) {
@@ -1250,7 +1209,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
           // 即時更新畫面 + 存到 D1
           setArchives(prev => prev.map(a => a.id === item.id ? updatedItem : a))
-          updateArchive(updatedItem).catch(err => console.warn('D1 儲存失敗:', err))
+          socialApi.update(updatedItem).catch(err => console.warn('D1 儲存失敗:', err))
           successCount++
 
           // 強制讓出執行緒，讓 React 有機會更新 UI

@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Plus, X, Image, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download, Menu } from 'lucide-react'
-import config from '../config'
 import { MEMBERS_NO_VICTORY as MEMBERS, MEMBER_ALIASES, getMemberColor, genId } from '../utils/members'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
+import { membershipApi } from '../utils/api'
 import './MembershipArchive.css'
 
 // HLS 影片播放元件（支援 .m3u8，動態載入 hls.js）
@@ -143,9 +143,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   async function loadArchives() {
     setLoading(true)
     try {
-      const res = await fetch(`${config.API_URL}/membership`)
-      if (!res.ok) throw new Error('載入失敗')
-      const data = await res.json()
+      const data = await membershipApi.load()
       setArchives(data)
     } catch (err) {
       console.error('載入失敗', err)
@@ -153,44 +151,6 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  // 建立新的會員備份
-  async function createArchive(item) {
-    const res = await fetch(`${config.API_URL}/membership`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.API_KEY
-      },
-      body: JSON.stringify(item)
-    })
-    if (!res.ok) throw new Error('建立失敗')
-    return res.json()
-  }
-
-  // 更新會員備份
-  async function updateArchive(item) {
-    const res = await fetch(`${config.API_URL}/membership/${item.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.API_KEY
-      },
-      body: JSON.stringify(item)
-    })
-    if (!res.ok) throw new Error('更新失敗')
-    return res.json()
-  }
-
-  // 刪除會員備份
-  async function deleteArchiveById(id) {
-    const res = await fetch(`${config.API_URL}/membership/${id}`, {
-      method: 'DELETE',
-      headers: { 'X-API-Key': config.API_KEY }
-    })
-    if (!res.ok) throw new Error('刪除失敗')
-    return res.json()
   }
 
   // ===== b.stage 匯入功能 =====
@@ -332,11 +292,8 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     // 從 API 重新載入最新資料來建去重集合（避免 state 過期導致重複 INSERT）
     let latestArchives = archives
     try {
-      const res = await fetch(`${config.API_URL}/membership`)
-      if (res.ok) {
-        latestArchives = await res.json()
-        setArchives(latestArchives)
-      }
+      latestArchives = await membershipApi.load()
+      setArchives(latestArchives)
     } catch (e) {
       console.warn('重新載入資料失敗，使用現有 state 去重', e)
     }
@@ -377,7 +334,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               updateData.media = [...existingImages, ...newVideos]
               updateData.notes = item.notes || existing.notes
             }
-            await updateArchive(updateData).catch(err => console.warn('更新失敗:', err))
+            await membershipApi.update(updateData).catch(err => console.warn('更新失敗:', err))
             setArchives(prev => prev.map(a => a.id === updateData.id ? updateData : a))
             addImportLog(`🔄 已更新${hasVideo ? '（含影片）' : ''}: ${item.date} ${newCaption?.slice(0, 30) || '(無文字)'}`, 'info')
           }
@@ -434,7 +391,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           updatedAt: Date.now(),
         }
 
-        const result = await createArchive(record)
+        const result = await membershipApi.create(record)
         if (result.skipped) {
           setImportProcessProgress(prev => ({
             ...prev,
@@ -859,10 +816,10 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     setSaving(true)
     try {
       if (editingItem) {
-        await updateArchive(item)
+        await membershipApi.update(item)
         setArchives(archives.map(a => a.id === editingItem.id ? item : a))
       } else {
-        await createArchive(item)
+        await membershipApi.create(item)
         setArchives([item, ...archives])
       }
       showToast('已儲存')
@@ -892,7 +849,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     if (!confirmDelete) return
 
     try {
-      await deleteArchiveById(id)
+      await membershipApi.delete(id)
       setArchives(archives.filter(a => a.id !== id))
       showToast('已刪除')
     } catch (err) {

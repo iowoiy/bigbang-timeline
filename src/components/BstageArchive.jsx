@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Plus, X, Image, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, RefreshCw, Heart, MessageCircle } from 'lucide-react'
-import config from '../config'
 import { MEMBERS_NO_ALL as MEMBERS, getMemberColor, genId } from '../utils/members'
 import { getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
+import { bstageApi } from '../utils/api'
 import './BstageArchive.css'
 
 export default function BstageArchive({ isAdmin, onBack }) {
@@ -61,9 +61,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
   async function loadArchives() {
     setLoading(true)
     try {
-      const res = await fetch(`${config.API_URL}/bstage`)
-      if (!res.ok) throw new Error('載入失敗')
-      const data = await res.json()
+      const data = await bstageApi.load()
       setArchives(data)
     } catch (err) {
       console.error('載入失敗', err)
@@ -71,41 +69,6 @@ export default function BstageArchive({ isAdmin, onBack }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  async function createArchive(item) {
-    const res = await fetch(`${config.API_URL}/bstage`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.API_KEY
-      },
-      body: JSON.stringify(item)
-    })
-    if (!res.ok) throw new Error('建立失敗')
-    return res.json()
-  }
-
-  async function updateArchive(item) {
-    const res = await fetch(`${config.API_URL}/bstage/${item.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.API_KEY
-      },
-      body: JSON.stringify(item)
-    })
-    if (!res.ok) throw new Error('更新失敗')
-    return res.json()
-  }
-
-  async function deleteArchiveById(id) {
-    const res = await fetch(`${config.API_URL}/bstage/${id}`, {
-      method: 'DELETE',
-      headers: { 'X-API-Key': config.API_KEY }
-    })
-    if (!res.ok) throw new Error('刪除失敗')
-    return res.json()
   }
 
   function showToast(msg, type = 'success') {
@@ -418,10 +381,10 @@ export default function BstageArchive({ isAdmin, onBack }) {
     setSaving(true)
     try {
       if (editingItem) {
-        await updateArchive(item)
+        await bstageApi.update(item)
         setArchives(archives.map(a => a.id === editingItem.id ? item : a))
       } else {
-        await createArchive(item)
+        await bstageApi.create(item)
         setArchives([item, ...archives])
       }
       showToast('已儲存')
@@ -451,7 +414,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
     if (!confirmDelete) return
 
     try {
-      await deleteArchiveById(id)
+      await bstageApi.delete(id)
       setArchives(archives.filter(a => a.id !== id))
       showToast('已刪除')
     } catch (err) {

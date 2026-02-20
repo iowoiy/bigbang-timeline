@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { RefreshCw, Plus, X, Pencil, Image, Link, Camera, ChevronUp, Trash2, ExternalLink, Clock, Calendar, Save, History, Paperclip, Check, AlertCircle, Play, Film, ChevronLeft, ChevronRight, ArrowUpDown, Sun, Moon, Menu } from 'lucide-react'
-import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
 import { DEFAULT_EVENTS } from './data/defaultEvents'
@@ -8,59 +7,20 @@ import { MEMBERS, getMemberColor, genId } from './utils/members'
 import { getThumbUrl, parseVideoUrl, isImageUrl, getVideoThumbnail } from './utils/media'
 import { formatTime } from './utils/date'
 import { uploadToImgBB, uploadToCloudinary, uploadWithBackup } from './utils/upload'
+import { eventsApi, logVisitor } from './utils/api'
 const SocialArchive = lazy(() => import('./components/SocialArchive'))
 const MembershipArchive = lazy(() => import('./components/MembershipArchive'))
 
-// ========== API 函式 ==========
+// 載入事件（fallback 到預設資料）
 async function loadEvents() {
   try {
-    const res = await fetch(`${config.API_URL}/events`)
-    if (!res.ok) throw new Error('載入失敗')
-    const data = await res.json()
+    const data = await eventsApi.load()
     if (Array.isArray(data) && data.length > 0) return data
     return DEFAULT_EVENTS
   } catch (e) {
     console.warn('載入失敗，使用預設資料', e)
     return DEFAULT_EVENTS
   }
-}
-
-// 新增事件
-async function createEvent(event) {
-  const res = await fetch(`${config.API_URL}/events`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': config.API_KEY
-    },
-    body: JSON.stringify(event)
-  })
-  if (!res.ok) throw new Error('Create failed')
-  return res.json()
-}
-
-// 更新事件
-async function updateEvent(event) {
-  const res = await fetch(`${config.API_URL}/events/${event.id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': config.API_KEY
-    },
-    body: JSON.stringify(event)
-  })
-  if (!res.ok) throw new Error('Update failed')
-  return res.json()
-}
-
-// 刪除事件
-async function deleteEventById(id) {
-  const res = await fetch(`${config.API_URL}/events/${id}`, {
-    method: 'DELETE',
-    headers: { 'X-API-Key': config.API_KEY }
-  })
-  if (!res.ok) throw new Error('Delete failed')
-  return res.json()
 }
 
 // ========== 媒體顯示元件 ==========
@@ -177,19 +137,6 @@ export default function App() {
     })
   }, [])
 
-  // 記錄訪客（選擇身份時呼叫）
-  const logVisitor = (authorId) => {
-    fetch(`${config.API_URL}/visitors`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userAgent: navigator.userAgent,
-        referrer: document.referrer,
-        authorId
-      })
-    }).catch(() => {})
-  }
-
   // 淺色模式切換
   useEffect(() => {
     document.body.classList.toggle('light-mode', lightMode)
@@ -222,9 +169,9 @@ export default function App() {
     setSaving(true)
     try {
       if (isNew) {
-        await createEvent(event)
+        await eventsApi.create(event)
       } else {
-        await updateEvent(event)
+        await eventsApi.update(event)
       }
       // 更新本地狀態
       if (isNew) {
@@ -243,7 +190,7 @@ export default function App() {
   const persistDelete = async (id) => {
     setSaving(true)
     try {
-      await deleteEventById(id)
+      await eventsApi.delete(id)
       setEvents(prev => prev.filter(e => e.id !== id))
       flash('已刪除', 'success')
     } catch {
@@ -295,7 +242,7 @@ export default function App() {
 
       if (updated) {
         try {
-          await updateEvent({ ...ev, media: newMedia })
+          await eventsApi.update({ ...ev, media: newMedia })
           setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, media: newMedia } : e))
         } catch (err) {
           console.warn(`遷移 event ${ev.id} 更新失敗:`, err)
