@@ -1,0 +1,127 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+@import "tailwindcss";
+
+/* ========== Custom Theme ========== */
+@theme {
+  /* Brand colors */
+  --color-gold: #E5A500;
+  --color-gold-accent: #D4AF37;
+  --color-gold-light: #FFD000;
+  --color-red: #E63946;
+  --color-teal: #2A9D8F;
+  --color-blue: #457B9D;
+  --color-purple: #7B2D8E;
+  --color-orange: #F4A261;
+  --color-olive: #6B8E23;
+  --color-ig-pink: #E1306C;
+
+  /* Theme-aware colors (powered by CSS custom properties below) */
+  --color-bg: var(--bg);
+  --color-surface: var(--bg-surface);
+  --color-surface-hover: var(--bg-surface-hover);
+  --color-header: var(--bg-header);
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+  --color-border-default: var(--border);
+  --color-border-gold: var(--border-gold);
+  --color-border-input: var(--border-input);
+  --color-input: var(--input-bg);
+  --color-modal: var(--modal-bg);
+
+  /* Fonts */
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Breakpoints */
+  --breakpoint-xs: 380px;
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 600px;
+  --breakpoint-lg: 768px;
+
+  /* Animations */
+  --animate-fade-in: fadeIn 0.4s ease-out;
+  --animate-fade-in-up: fadeInUp 0.4s ease-out backwards;
+  --animate-fade-in-scale: fadeInScale 0.3s ease-out;
+  --animate-spin: spin 1s linear infinite;
+  --animate-pulse-slow: pulse 2s ease-in-out infinite;
+  --animate-toast-in: toastIn 0.3s ease-out;
+  --animate-modal-slide-in: modalSlideIn 0.3s ease-out;
+}
+
+/* ========== CSS Custom Properties for Dark/Light Toggle ========== */
+body {
+  /* Dark mode defaults */
+  --bg: #0A0A0A;
+  --bg-surface: #1A1A1A;
+  --bg-surface-hover: #1E1E1E;
+  --bg-header: rgba(10, 10, 10, 0.95);
+  --text: #F5F5F0;
+  --text-secondary: #888;
+  --text-muted: #777;
+  --text-dim: #555;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-gold: rgba(212, 175, 55, 0.12);
+  --border-input: rgba(255, 255, 255, 0.1);
+  --input-bg: transparent;
+  --scrollbar-track: #0A0A0A;
+  --scrollbar-thumb: #333;
+  --modal-bg: #1a1a1a;
+}
+
+body.light-mode {
+  --bg: #FFFFFF;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #FFFFFF;
+  --bg-header: rgba(255, 255, 255, 0.98);
+  --text: #1A1A1A;
+  --text-secondary: #666;
+  --text-muted: #666;
+  --text-dim: #888;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-gold: rgba(200, 180, 140, 0.2);
+  --border-input: rgba(0, 0, 0, 0.12);
+  --input-bg: #FAFAFA;
+  --scrollbar-track: #FFFFFF;
+  --scrollbar-thumb: #C8C0B0;
+  --modal-bg: #FFFFFF;
+}
+
+/* ========== Shared Keyframes ========== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

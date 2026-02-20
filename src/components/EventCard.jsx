@@ -22,20 +22,20 @@ export default function EventCard({ event: ev, onView, onEdit }) {
         style={{ borderLeft: '3px solid ' + catColor(primaryCat) }}
       >
         <div className="month-col" style={{ color: catColor(primaryCat) }}>{dateLabel(ev.month, ev.day)}</div>
-        <div style={{ flex: 1, minWidth: 0 }} onClick={() => onView(ev)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+        <div className="flex-1 min-w-0" onClick={() => onView(ev)}>
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
             {(ev.cats || [ev.cat]).filter(Boolean).map(c => (
               <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
             ))}
-            {hasExtra(ev) && <span style={{ fontSize: 9, color: '#2A9D8F', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Paperclip size={9} />已補充</span>}
-            {(ev.media?.length > 0) && <span style={{ fontSize: 9, color: '#D4AF37', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Image size={9} />{ev.media.length}</span>}
+            {hasExtra(ev) && <span className="text-[9px] text-teal inline-flex items-center gap-0.5"><Paperclip size={9} />已補充</span>}
+            {(ev.media?.length > 0) && <span className="text-[9px] text-gold-accent inline-flex items-center gap-0.5"><Image size={9} />{ev.media.length}</span>}
             {lastEditor(ev) && (
-              <span style={{ fontSize: 9, color: '#555' }}>·
+              <span className="text-[9px] text-text-dim">·
                 <span className="abadge sm" style={badgeStyle(lastEditor(ev))}>{authorEmoji(lastEditor(ev))} {authorName(lastEditor(ev))}</span>
               </span>
             )}
           </div>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.4 }}>{ev.title}</div>
+          <div className="font-bold text-sm mb-0.5 leading-snug">{ev.title}</div>
           <div className="event-desc">{ev.desc}</div>
 
           {ev.media?.length > 0 && (() => {
@@ -54,16 +54,16 @@ export default function EventCard({ event: ev, onView, onEdit }) {
           })()}
 
           {ev.links && ev.links.length > 0 && (
-            <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            <div className="mt-1.5 flex gap-1.5 flex-wrap">
               {ev.links.map((lk, i) => (
-                <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="link-tag" onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="link-tag inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
                   <Link size={10} />{lk.label}
                 </a>
               ))}
             </div>
           )}
           {ev.members && ev.members.length > 0 && (
-            <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <div className="mt-1.5 flex gap-1 flex-wrap">
               {ev.members.map(m => <span key={m} className="member-tag" style={{ borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
             </div>
           )}

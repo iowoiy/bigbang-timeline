@@ -315,10 +315,10 @@ export default function App() {
   if (!me) {
     return (
       <div className="author-screen">
-        <div style={{ textAlign: 'center', padding: 40, maxWidth: 460 }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>👑</div>
+        <div className="text-center p-10 max-w-[460px]">
+          <div className="text-[2.5rem] mb-2">👑</div>
           <h1 className="brand">BIGBANG</h1>
-          <p style={{ color: '#888', fontSize: 14, marginTop: 8, fontStyle: 'italic' }}>共筆年表 — 請選擇你的身份</p>
+          <p className="text-text-secondary text-sm mt-2 italic">共筆年表 — 請選擇你的身份</p>
           <div className="author-grid">
             {AUTHORS.map(a => (
               <button
@@ -327,12 +327,12 @@ export default function App() {
                 style={{ borderColor: a.color + '33' }}
                 onClick={() => { setMe(a.id); logVisitor(a.id) }}
               >
-                <span style={{ fontSize: '1.8rem' }}>{a.emoji}</span>
-                <span style={{ fontSize: 15, fontWeight: 600, color: a.color }}>{a.name}</span>
+                <span className="text-[1.8rem]">{a.emoji}</span>
+                <span className="text-[15px] font-semibold" style={{ color: a.color }}>{a.name}</span>
               </button>
             ))}
           </div>
-          <p style={{ color: '#555', fontSize: 11, marginTop: 24 }}>選擇後即可開始編輯，你的操作都會記錄署名</p>
+          <p className="text-text-dim text-[11px] mt-6">選擇後即可開始編輯，你的操作都會記錄署名</p>
         </div>
       </div>
     )
@@ -342,8 +342,8 @@ export default function App() {
   if (loading) {
     return (
       <div className="loading-screen">
-        <div className="brand" style={{ fontSize: '3rem', letterSpacing: '0.3em' }}>BIGBANG</div>
-        <div style={{ color: '#888', marginTop: 12, fontSize: 14 }}>載入中...</div>
+        <div className="brand text-[3rem] tracking-[0.3em]">BIGBANG</div>
+        <div className="text-text-secondary mt-3 text-sm">載入中...</div>
       </div>
     )
   }
@@ -379,9 +379,8 @@ export default function App() {
             <button
               onClick={migrateImages}
               disabled={migrating}
-              className="sync-btn migrate-btn"
+              className="sync-btn migrate-btn text-[10px] px-2 py-1 whitespace-nowrap"
               title="遷移舊圖片到 Cloudinary"
-              style={{ fontSize: 10, padding: '4px 8px', whiteSpace: 'nowrap' }}
             >
               {migrating
                 ? `遷移中 ${migrateProgress.current}/${migrateProgress.total}`
@@ -420,13 +419,13 @@ export default function App() {
 
       {/* Header */}
       <div className="hero">
-        <div style={{ fontSize: '2rem' }}>👑</div>
+        <div className="text-[2rem]">👑</div>
         <h1 className="brand">BIGBANG</h1>
-        <p style={{ color: '#888', fontSize: 13, marginTop: 6, fontStyle: 'italic' }}>影視作品共筆年表</p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 20, flexWrap: 'wrap' }}>
-          <div style={{ textAlign: 'center' }}><div className="stat-num">{events.length}</div><div className="stat-label">事件</div></div>
-          <div style={{ textAlign: 'center' }}><div className="stat-num">{supplementedCount}</div><div className="stat-label">已補充</div></div>
-          <div style={{ textAlign: 'center' }}><div className="stat-num">{yearSpan}</div><div className="stat-label">年</div></div>
+        <p className="text-text-secondary text-[13px] mt-1.5 italic">影視作品共筆年表</p>
+        <div className="flex justify-center gap-6 mt-5 flex-wrap">
+          <div className="text-center"><div className="stat-num">{events.length}</div><div className="stat-label">事件</div></div>
+          <div className="text-center"><div className="stat-num">{supplementedCount}</div><div className="stat-label">已補充</div></div>
+          <div className="text-center"><div className="stat-num">{yearSpan}</div><div className="stat-label">年</div></div>
         </div>
       </div>
 
@@ -443,10 +442,10 @@ export default function App() {
       {/* Timeline */}
       <div className="timeline">
         {years.map(year => (
-          <div key={year} id={`year-${year}`} style={{ marginBottom: 44 }}>
+          <div key={year} id={`year-${year}`} className="mb-11">
             <div className="year-header">
               <span className="year-num">{year}</span>
-              <span style={{ fontSize: 10, color: '#555' }}>{byYear[year].length} 項</span>
+              <span className="text-[10px] text-text-dim">{byYear[year].length} 項</span>
               {(FAN_SINCE[year] || []).map(aid => (
                 <span
                   key={aid}
@@ -467,8 +466,8 @@ export default function App() {
 
       {/* Footer */}
       <div className="footer">
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: '0.3em', color: 'rgba(212,175,55,0.25)' }}>BIGBANG · V.I.P</div>
-        <p style={{ fontSize: 10, color: '#444', marginTop: 6 }}>共筆年表 · Since 2006</p>
+        <div className="font-display text-base tracking-[0.3em] text-gold-accent/25">BIGBANG · V.I.P</div>
+        <p className="text-[10px] text-[#444] mt-1.5">共筆年表 · Since 2006</p>
       </div>
 
       {/* Modal */}

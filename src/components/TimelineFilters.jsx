@@ -19,7 +19,7 @@ export default function TimelineFilters({
       {/* 第一排：分類篩選 */}
       <div className="filter-row">
         <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
-          全部 <span style={{ opacity: 0.6, fontSize: 10 }}>{events.length}</span>
+          全部 <span className="opacity-60 text-[10px]">{events.length}</span>
         </button>
         {Object.entries(CATEGORIES).map(([key, cat]) => (
           <button
@@ -27,7 +27,7 @@ export default function TimelineFilters({
             className={`filter-btn ${filter === key ? 'active' : ''}`}
             onClick={() => setFilter(key)}
           >
-            {cat.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{events.filter(e => (e.cats && e.cats.includes(key)) || e.cat === key).length}</span>
+            {cat.label} <span className="opacity-60 text-[10px]">{events.filter(e => (e.cats && e.cats.includes(key)) || e.cat === key).length}</span>
           </button>
         ))}
       </div>

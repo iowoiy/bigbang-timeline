@@ -207,9 +207,9 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
     <div className="overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#D4AF37' }}>
-            {mode === 'new' ? <><Plus size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 新增事件</> : mode === 'edit' ? <><Pencil size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 編輯事件</> : <><Calendar size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 事件詳情</>}
+        <div className="flex justify-between items-start mb-4">
+          <div className="text-[15px] font-bold text-gold-accent">
+            {mode === 'new' ? <><Plus size={14} className="inline align-middle" /> 新增事件</> : mode === 'edit' ? <><Pencil size={14} className="inline align-middle" /> 編輯事件</> : <><Calendar size={14} className="inline align-middle" /> 事件詳情</>}
           </div>
           <button onClick={onClose} className="modal-close-btn"><X size={16} /></button>
         </div>
@@ -221,9 +221,9 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
             <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="事件標題" className="form-input" />
             <label className="form-label">描述</label>
             <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="事件描述" rows={3} className="form-input" />
-            <div style={{ marginBottom: 12 }}>
+            <div className="mb-3">
               <label className="form-label">日期</label>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="flex gap-2">
                 <input
                   type="date"
                   value={`${form.year}-${String(form.month).padStart(2, '0')}-${String(form.day || 1).padStart(2, '0')}`}
@@ -231,20 +231,18 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
                     const [y, m, d] = e.target.value.split('-').map(Number)
                     setForm(f => ({ ...f, year: y, month: m, day: d }))
                   }}
-                  className="form-input"
-                  style={{ flex: 1 }}
+                  className="form-input flex-1"
                 />
                 <input
                   type="time"
                   value={form.time}
                   onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                  className="form-input"
-                  style={{ width: 120 }}
+                  className="form-input w-[120px]"
                   placeholder="時間（選填）"
                 />
               </div>
             </div>
-            <div style={{ marginBottom: 12 }}>
+            <div className="mb-3">
               <label className="form-label">分類（可多選）</label>
                 <div className="member-select category-select">
                   {Object.entries(CATEGORIES).map(([k, v]) => {
@@ -308,7 +306,7 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
             <div className="divider" />
 
             {/* Media */}
-            <label className="form-label"><Image size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />圖片 / 影片</label>
+            <label className="form-label"><Image size={12} className="inline align-middle mr-1" />圖片 / 影片</label>
             <div className="media-grid">
               {form.media.map((m, i) => {
                 const thumbnail = getVideoThumbnail(m.url)
@@ -333,50 +331,49 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
                 )
               })}
             </div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="flex gap-1.5 mt-1.5 flex-wrap items-center">
               <input
                 value={mediaUrl}
                 onChange={e => setMediaUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addMediaUrl()}
                 onPaste={handlePaste}
                 placeholder="貼上圖片或 YouTube / IG / X 連結"
-                className="form-input"
-                style={{ flex: '1 1 200px', marginBottom: 0 }}
+                className="form-input flex-[1_1_200px] !mb-0"
               />
               <button onClick={addMediaUrl} className="gold-btn">+</button>
-              <span style={{ color: '#555', fontSize: 11 }}>或</span>
+              <span className="text-text-dim text-[11px]">或</span>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
                 multiple
                 onChange={handleFileUpload}
-                style={{ display: 'none' }}
+                className="hidden"
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 className="upload-btn"
               >
-                {uploading ? '上傳中...' : <><Camera size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />上傳圖片</>}
+                {uploading ? '上傳中...' : <><Camera size={14} className="inline align-middle mr-1" />上傳圖片</>}
               </button>
             </div>
 
             <div className="divider" />
 
             {/* Links */}
-            <label className="form-label"><Link size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />相關連結</label>
+            <label className="form-label"><Link size={12} className="inline align-middle mr-1" />相關連結</label>
             {form.links.map((lk, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4 }}>
-                <span style={{ flex: 1, fontSize: 11, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={10} />{lk.label}</span>
+              <div key={i} className="flex items-center gap-1.5 py-1 px-2 bg-white/[0.03] rounded-md mb-1">
+                <span className="flex-1 text-[11px] text-teal overflow-hidden text-ellipsis whitespace-nowrap flex items-center gap-1"><Link size={10} />{lk.label}</span>
                 {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)} {authorName(lk.author)}</span>}
-                <button onClick={() => removeLink(i)} style={{ background: 'none', border: 'none', color: '#E63946', fontSize: 12, display: 'flex', alignItems: 'center' }}><X size={12} /></button>
+                <button onClick={() => removeLink(i)} className="bg-transparent border-none text-red text-xs flex items-center"><X size={12} /></button>
               </div>
             ))}
             <div className="link-input-group">
               <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="名稱（可選）" className="form-input" />
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLink()} placeholder="貼上網址" className="form-input" style={{ flex: 1, marginBottom: 0 }} />
+              <div className="flex gap-1.5">
+                <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLink()} placeholder="貼上網址" className="form-input flex-1 !mb-0" />
                 <button onClick={addLink} className="gold-btn">+ 新增</button>
               </div>
             </div>
@@ -385,16 +382,16 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
 
             <div className="form-actions">
               <button onClick={onClose} className="cancel-btn">取消</button>
-              <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn save-btn">{saving ? '儲存中...' : <><Save size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />儲存</>}</button>
+              <button onClick={saveEvent} disabled={saving || !form.title?.trim()} className="gold-btn save-btn">{saving ? '儲存中...' : <><Save size={14} className="inline align-middle mr-1" />儲存</>}</button>
             </div>
             {mode === 'edit' && (
               confirmDel ? (
-                <div className="form-actions" style={{ marginTop: 8 }}>
+                <div className="form-actions mt-2">
                   <button onClick={() => setConfirmDel(false)} className="cancel-btn">取消刪除</button>
-                  <button onClick={() => onDelete(form.id)} style={{ flex: 1, padding: '12px 16px', background: '#E63946', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600 }}>確定刪除</button>
+                  <button onClick={() => onDelete(form.id)} className="flex-1 py-3 px-4 bg-red text-white border-none rounded-lg text-sm font-semibold">確定刪除</button>
                 </div>
               ) : (
-                <button onClick={() => setConfirmDel(true)} className="del-btn" style={{ width: '100%', marginTop: 8, padding: '12px 16px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><Trash2 size={14} />刪除事件</button>
+                <button onClick={() => setConfirmDel(true)} className="del-btn w-full mt-2 py-3 px-4 text-sm flex items-center justify-center gap-1"><Trash2 size={14} />刪除事件</button>
               )
             )}
           </div>
@@ -403,17 +400,17 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
         {/* View Mode */}
         {mode === 'view' && event && (
           <div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+            <div className="flex gap-1.5 items-center flex-wrap mb-2">
               {(event.cats || [event.cat]).filter(Boolean).map(c => (
                 <span key={c} className="cat-tag" style={{ background: catBg(c), color: catColor(c) }}>{catLabel(c)}</span>
               ))}
-              <span style={{ fontSize: 11, color: '#666' }}>{event.year}/{event.month}{event.day ? `/${event.day}` : ''}</span>
+              <span className="text-[11px] text-text-secondary">{event.year}/{event.month}{event.day ? `/${event.day}` : ''}</span>
             </div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.4, marginBottom: 6 }}>{event.title}</h3>
-            <p style={{ fontSize: 13, color: '#999', lineHeight: 1.7, marginBottom: 8, whiteSpace: 'pre-line' }}>{event.desc}</p>
+            <h3 className="text-lg font-bold leading-snug mb-1.5">{event.title}</h3>
+            <p className="text-[13px] text-[#999] leading-relaxed mb-2 whitespace-pre-line">{event.desc}</p>
             {event.members?.length > 0 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
-                {event.members.map(m => <span key={m} className="member-tag" style={{ fontSize: 10, padding: '2px 7px', borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
+              <div className="flex gap-1 flex-wrap mb-3">
+                {event.members.map(m => <span key={m} className="member-tag text-[10px] py-0.5 px-[7px]" style={{ borderColor: getMemberColor(m), color: getMemberColor(m) }}>{m}</span>)}
               </div>
             )}
 
@@ -425,12 +422,12 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
                 <>
                   {videos.length > 0 && (
                     <>
-                      <div className="divider" style={{ marginTop: 0 }} />
-                      <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Film size={12} />影片</h4>
+                      <div className="divider !mt-0" />
+                      <h4 className="text-xs font-semibold text-gold-accent mb-2 flex items-center gap-1"><Film size={12} />影片</h4>
                       {videos.map((m, i) => (
-                        <div key={i} style={{ marginBottom: 12 }}>
+                        <div key={i} className="mb-3">
                           <MediaPreview url={m.url} />
-                          <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
+                          <div className="text-[10px] text-text-dim mt-1">
                             {m.author && <span className="abadge sm" style={badgeStyle(m.author)}>{authorEmoji(m.author)} {authorName(m.author)}</span>}
                             {' '}{formatTime(m.ts)}
                           </div>
@@ -440,8 +437,8 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
                   )}
                   {images.length > 0 && (
                     <>
-                      <div className="divider" style={{ marginTop: 0 }} />
-                      <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Image size={12} />圖片 ({images.length})</h4>
+                      <div className="divider !mt-0" />
+                      <h4 className="text-xs font-semibold text-gold-accent mb-2 flex items-center gap-1"><Image size={12} />圖片 ({images.length})</h4>
                       <div className="image-list">
                         {images.map((m, i) => (
                           <div
@@ -465,11 +462,11 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
             {/* Links in view */}
             {event.links?.length > 0 && (
               <>
-                <div className="divider" style={{ marginTop: 0 }} />
-                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}><Link size={12} />相關連結</h4>
+                <div className="divider !mt-0" />
+                <h4 className="text-xs font-semibold text-gold-accent mb-2 flex items-center gap-1"><Link size={12} />相關連結</h4>
                 {event.links.map((lk, i) => (
-                  <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, marginBottom: 4, textDecoration: 'none' }}>
-                    <span style={{ flex: 1, fontSize: 12, color: '#2A9D8F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={10} />{lk.label}</span>
+                  <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 py-2 px-2.5 bg-white/[0.03] rounded-md mb-1 no-underline">
+                    <span className="flex-1 text-xs text-teal overflow-hidden text-ellipsis whitespace-nowrap flex items-center gap-1"><Link size={10} />{lk.label}</span>
                     {lk.author && <span className="abadge sm" style={badgeStyle(lk.author)}>{authorEmoji(lk.author)}</span>}
                   </a>
                 ))}
@@ -479,12 +476,12 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
             {/* Notes in view */}
             {event.notes?.length > 0 && (
               <>
-                <div className="divider" style={{ marginTop: 0 }} />
-                <h4 style={{ fontSize: 12, fontWeight: 600, color: '#D4AF37', marginBottom: 8 }}>💬 留言</h4>
+                <div className="divider !mt-0" />
+                <h4 className="text-xs font-semibold text-gold-accent mb-2">💬 留言</h4>
                 {event.notes.map((n, i) => (
-                  <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: 12, color: '#aaa', marginBottom: 2 }}>{n.text}</div>
-                    <div style={{ fontSize: 10, color: '#555' }}>
+                  <div key={i} className="py-1.5 border-b border-white/5">
+                    <div className="text-xs text-[#aaa] mb-0.5">{n.text}</div>
+                    <div className="text-[10px] text-text-dim">
                       <span className="abadge sm" style={badgeStyle(n.author)}>{authorEmoji(n.author)} {authorName(n.author)}</span>
                       {' '}{formatTime(n.ts)}
                     </div>
@@ -496,23 +493,23 @@ export default function EventModal({ mode, event, me, saving, onSave, onDelete, 
             <div className="divider" />
 
             <div className="form-actions">
-              <button onClick={() => setShowLog(!showLog)} className="cancel-btn">{showLog ? '收起紀錄' : <><History size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />編輯紀錄</>}</button>
-              <button onClick={() => onEdit(event)} className="gold-btn save-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}><Pencil size={14} />編輯</button>
+              <button onClick={() => setShowLog(!showLog)} className="cancel-btn">{showLog ? '收起紀錄' : <><History size={14} className="inline align-middle mr-1" />編輯紀錄</>}</button>
+              <button onClick={() => onEdit(event)} className="gold-btn save-btn flex items-center gap-1 justify-center"><Pencil size={14} />編輯</button>
             </div>
 
             {showLog && (
-              <div style={{ marginTop: 12, padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>編輯紀錄（最新在前）</div>
+              <div className="mt-3 p-3 bg-white/[0.02] rounded-lg">
+                <div className="text-[11px] text-text-secondary mb-1.5">編輯紀錄（最新在前）</div>
                 {event.editLog?.length > 0 ? (
                   [...event.editLog].reverse().map((log, i) => (
-                    <div key={i} style={{ fontSize: 11, color: '#777', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div key={i} className="text-[11px] text-text-muted py-0.5 flex items-center gap-1.5">
                       <span className="abadge sm" style={badgeStyle(log.author)}>{authorEmoji(log.author)} {authorName(log.author)}</span>
                       <span>{log.action}</span>
-                      <span style={{ color: '#444' }}>{formatTime(log.ts)}</span>
+                      <span className="text-[#444]">{formatTime(log.ts)}</span>
                     </div>
                   ))
                 ) : (
-                  <div style={{ fontSize: 11, color: '#444' }}>尚無紀錄</div>
+                  <div className="text-[11px] text-[#444]">尚無紀錄</div>
                 )}
               </div>
             )}
