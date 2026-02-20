@@ -67,6 +67,31 @@ body {
   --scrollbar-track: #0A0A0A;
   --scrollbar-thumb: #333;
   --modal-bg: #1a1a1a;
+
+  /* Gold accent RGB channel for rgba compositing */
+  --gold-accent-rgb: 212, 175, 55;
+
+  /* Additional text scales */
+  --text-hint: #aaa;
+  --text-body: #ccc;
+  --text-strong: #ddd;
+
+  /* Border scales */
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.15);
+
+  /* Overlay scales */
+  --overlay-subtle: rgba(255, 255, 255, 0.05);
+  --overlay-light: rgba(255, 255, 255, 0.08);
+  --overlay-backdrop: rgba(0, 0, 0, 0.7);
+
+  /* Surface scales */
+  --bg-deep: #111;
+
+  /* Composite tokens */
+  --gradient-gold: linear-gradient(135deg, #E5A500 0%, #B8860B 100%);
+  --shadow-gold: 0 2px 10px rgba(212, 175, 55, 0.4);
+  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.3);
 }
 
 body.light-mode {
@@ -85,6 +110,20 @@ body.light-mode {
   --scrollbar-track: #FFFFFF;
   --scrollbar-thumb: #C8C0B0;
   --modal-bg: #FFFFFF;
+
+  --gold-accent-rgb: 200, 180, 140;
+  --text-hint: #888;
+  --text-body: #444;
+  --text-strong: #333;
+  --border-light: rgba(0, 0, 0, 0.12);
+  --border-medium: rgba(0, 0, 0, 0.15);
+  --overlay-subtle: rgba(0, 0, 0, 0.05);
+  --overlay-light: rgba(0, 0, 0, 0.08);
+  --overlay-backdrop: rgba(0, 0, 0, 0.5);
+  --bg-deep: #f0f0f0;
+  --gradient-gold: linear-gradient(135deg, #FFD000 0%, #F5C000 100%);
+  --shadow-gold: 0 2px 10px rgba(255, 208, 0, 0.5);
+  --focus-ring: 0 0 0 3px rgba(255, 208, 0, 0.2);
 }
 
 /* ========== Shared Keyframes ========== */
