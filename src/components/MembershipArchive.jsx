@@ -5,6 +5,7 @@ import config from '../config'
 import { MEMBERS_NO_VICTORY as MEMBERS, MEMBER_ALIASES, getMemberColor, genId } from '../utils/members'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
+import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
 import './MembershipArchive.css'
 
 // HLS 影片播放元件（支援 .m3u8，動態載入 hls.js）
@@ -76,70 +77,6 @@ const BSTAGE_SITES = {
       '67361d0527162e668b09c620': '太陽',
     },
   },
-}
-
-// 取得會員備份用的 ImgBB API Key
-const MEMBERSHIP_IMGBB_KEY = config.MEMBERSHIP_IMGBB_API_KEY || config.IMGBB_API_KEY
-
-// 上傳圖片到 ImgBB（會員備份專用）
-async function uploadToImgBB(file) {
-  const formData = new FormData()
-  formData.append('image', file)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${MEMBERSHIP_IMGBB_KEY}`, {
-    method: 'POST',
-    body: formData
-  })
-  const data = await res.json()
-  if (data.success) {
-    return data.data.url
-  }
-  throw new Error('上傳失敗')
-}
-
-// 透過 URL 上傳圖片到 ImgBB
-async function uploadUrlToImgBB(imageUrl) {
-  const formData = new FormData()
-  formData.append('image', imageUrl)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${MEMBERSHIP_IMGBB_KEY}`, {
-    method: 'POST',
-    body: formData
-  })
-  const data = await res.json()
-  if (data.success) {
-    return data.data.url
-  }
-  throw new Error('上傳失敗')
-}
-
-// 上傳圖片到 Cloudinary 作為備份（會員備份專用帳號）
-async function uploadToCloudinary(imageUrl) {
-  const cloudName = config.MEMBERSHIP_CLOUDINARY_CLOUD_NAME || config.CLOUDINARY_CLOUD_NAME
-  const preset = config.MEMBERSHIP_CLOUDINARY_PRESET || config.CLOUDINARY_UPLOAD_PRESET
-  if (!cloudName || !preset) {
-    console.warn('Cloudinary 未設定，跳過備份')
-    return null
-  }
-
-  try {
-    const formData = new FormData()
-    formData.append('file', imageUrl)
-    formData.append('upload_preset', preset)
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      { method: 'POST', body: formData }
-    )
-    const data = await res.json()
-
-    if (data.secure_url) {
-      console.log('✅ Cloudinary 備份成功:', data.secure_url)
-      return data.secure_url
-    }
-    throw new Error(data.error?.message || '上傳失敗')
-  } catch (err) {
-    console.warn('Cloudinary 備份失敗:', err.message)
-    return null
-  }
 }
 
 function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
@@ -465,9 +402,10 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             continue
           }
           try {
+            const mbOpts = { context: 'membership' }
             const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-              uploadUrlToImgBB(img.originalUrl),
-              uploadToCloudinary(img.originalUrl)
+              uploadToImgBB(img.originalUrl, mbOpts),
+              uploadToCloudinary(img.originalUrl, mbOpts)
             ])
             uploadedMedia.push({
               url: imgbbUrl,
@@ -776,9 +714,10 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   // 單張圖片背景上傳（同時上傳 ImgBB + Cloudinary 備份）
   async function uploadSingleImage(originalUrl, index) {
     try {
+      const mbOpts = { context: 'membership' }
       const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadUrlToImgBB(originalUrl),
-        uploadToCloudinary(originalUrl)
+        uploadToImgBB(originalUrl, mbOpts),
+        uploadToCloudinary(originalUrl, mbOpts)
       ])
 
       setFormData(prev => ({
@@ -819,9 +758,10 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       const newMedia = []
       for (const file of files) {
         // 圖片上傳到 ImgBB
+        const mbOpts = { context: 'membership' }
         const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-          uploadToImgBB(file),
-          uploadToCloudinary(URL.createObjectURL(file))
+          uploadToImgBB(file, mbOpts),
+          uploadToCloudinary(file, mbOpts)
         ])
         newMedia.push({
           url: imgbbUrl,

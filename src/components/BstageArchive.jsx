@@ -4,69 +4,8 @@ import config from '../config'
 import { MEMBERS_NO_ALL as MEMBERS, getMemberColor, genId } from '../utils/members'
 import { getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate } from '../utils/date'
+import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
 import './BstageArchive.css'
-
-// 取得社群備份用的 ImgBB API Key
-const BSTAGE_IMGBB_KEY = config.SOCIAL_IMGBB_API_KEY || config.IMGBB_API_KEY
-
-// 上傳圖片到 ImgBB
-async function uploadToImgBB(file) {
-  const formData = new FormData()
-  formData.append('image', file)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${BSTAGE_IMGBB_KEY}`, {
-    method: 'POST',
-    body: formData
-  })
-  const data = await res.json()
-  if (data.success) {
-    return data.data.url
-  }
-  throw new Error('上傳失敗')
-}
-
-// 透過 URL 上傳圖片到 ImgBB
-async function uploadUrlToImgBB(imageUrl) {
-  const formData = new FormData()
-  formData.append('image', imageUrl)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${BSTAGE_IMGBB_KEY}`, {
-    method: 'POST',
-    body: formData
-  })
-  const data = await res.json()
-  if (data.success) {
-    return data.data.url
-  }
-  throw new Error('上傳失敗')
-}
-
-// 上傳圖片到 Cloudinary 作為備份
-async function uploadToCloudinary(imageUrl) {
-  if (!config.CLOUDINARY_CLOUD_NAME || !config.CLOUDINARY_UPLOAD_PRESET) {
-    console.warn('Cloudinary 未設定，跳過備份')
-    return null
-  }
-
-  try {
-    const formData = new FormData()
-    formData.append('file', imageUrl)
-    formData.append('upload_preset', config.CLOUDINARY_UPLOAD_PRESET)
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${config.CLOUDINARY_CLOUD_NAME}/image/upload`,
-      { method: 'POST', body: formData }
-    )
-    const data = await res.json()
-
-    if (data.secure_url) {
-      console.log('✅ Cloudinary 備份成功:', data.secure_url)
-      return data.secure_url
-    }
-    throw new Error(data.error?.message || '上傳失敗')
-  } catch (err) {
-    console.warn('Cloudinary 備份失敗:', err.message)
-    return null
-  }
-}
 
 export default function BstageArchive({ isAdmin, onBack }) {
   const [archives, setArchives] = useState([])
@@ -364,9 +303,10 @@ export default function BstageArchive({ isAdmin, onBack }) {
   // 單張圖片背景上傳（同時上傳 ImgBB + Cloudinary 備份）
   async function uploadSingleImage(originalUrl, index) {
     try {
+      const bsOpts = { context: 'bstage' }
       const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadUrlToImgBB(originalUrl),
-        uploadToCloudinary(originalUrl)
+        uploadToImgBB(originalUrl, bsOpts),
+        uploadToCloudinary(originalUrl, bsOpts)
       ])
 
       setFormData(prev => ({
@@ -406,7 +346,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
     try {
       const newMedia = []
       for (const file of files) {
-        const url = await uploadToImgBB(file)
+        const url = await uploadToImgBB(file, { context: 'bstage' })
         newMedia.push({ url, type: 'image' })
       }
       setFormData(prev => ({

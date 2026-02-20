@@ -6,6 +6,7 @@ import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../da
 import { MEMBERS, getMemberColor, genId } from '../utils/members'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
+import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
 import './SocialArchive.css'
 
 // 貼文類型
@@ -23,88 +24,6 @@ const IG_ACCOUNTS = {
   '大聲': 'd_lable_official',
   '勝利': '',
   '全員': 'bigbangofficial',
-}
-
-// 取得社群備份用的 ImgBB API Key（依成員分流，T.O.P 用獨立帳號）
-function getImgBBKey(member) {
-  if (member === 'T.O.P' && config.TOP_IMGBB_API_KEY) return config.TOP_IMGBB_API_KEY
-  return config.SOCIAL_IMGBB_API_KEY || config.IMGBB_API_KEY
-}
-
-// 取得社群備份用的 Cloudinary 設定（依成員分流）
-function getCloudinaryConfig(member) {
-  if (member === 'T.O.P' && config.TOP_CLOUDINARY_CLOUD_NAME) {
-    return {
-      cloudName: config.TOP_CLOUDINARY_CLOUD_NAME,
-      preset: config.TOP_CLOUDINARY_PRESET,
-    }
-  }
-  return {
-    cloudName: config.SOCIAL_CLOUDINARY_CLOUD_NAME || config.CLOUDINARY_CLOUD_NAME,
-    preset: config.SOCIAL_CLOUDINARY_PRESET || config.CLOUDINARY_UPLOAD_PRESET,
-  }
-}
-
-// 上傳圖片到 ImgBB（社群備份專用，member 可選）
-async function uploadToImgBB(file, member) {
-  const key = getImgBBKey(member)
-  const formData = new FormData()
-  formData.append('image', file)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, {
-    method: 'POST',
-    body: formData
-  })
-  const data = await res.json()
-  if (data.success) {
-    return data.data.url
-  }
-  throw new Error('上傳失敗')
-}
-
-// 透過 URL 上傳圖片到 ImgBB（用於 IG 圖片，member 可選）
-async function uploadUrlToImgBB(imageUrl, member) {
-  const key = getImgBBKey(member)
-  const formData = new FormData()
-  formData.append('image', imageUrl)
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, {
-    method: 'POST',
-    body: formData
-  })
-  const data = await res.json()
-  if (data.success) {
-    return data.data.url
-  }
-  throw new Error('上傳失敗')
-}
-
-// 上傳圖片到 Cloudinary 作為備份（member 可選）
-async function uploadToCloudinary(imageUrl, member) {
-  const { cloudName, preset } = getCloudinaryConfig(member)
-  if (!cloudName || !preset) {
-    console.warn('Cloudinary 未設定，跳過備份')
-    return null
-  }
-
-  try {
-    const formData = new FormData()
-    formData.append('file', imageUrl)
-    formData.append('upload_preset', preset)
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      { method: 'POST', body: formData }
-    )
-    const data = await res.json()
-
-    if (data.secure_url) {
-      console.log('✅ Cloudinary 備份成功:', data.secure_url)
-      return data.secure_url
-    }
-    throw new Error(data.error?.message || '上傳失敗')
-  } catch (err) {
-    console.warn('Cloudinary 備份失敗:', err.message)
-    return null
-  }
 }
 
 // 根據 IG 帳號判斷成員
@@ -857,9 +776,10 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   async function uploadSingleImage(originalUrl, index, member) {
     try {
       // 同時上傳到 ImgBB 和 Cloudinary（依成員分流）
+      const opts = { context: 'social', member }
       const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadUrlToImgBB(originalUrl, member),
-        uploadToCloudinary(originalUrl, member)
+        uploadToImgBB(originalUrl, opts),
+        uploadToCloudinary(originalUrl, opts)
       ])
 
       // 上傳成功，更新該圖片的 URL（主要用 ImgBB，備份用 Cloudinary）
@@ -896,9 +816,10 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   async function uploadVideoThumbnail(originalThumbnailUrl, index, member) {
     try {
       // 同時上傳到 ImgBB 和 Cloudinary（依成員分流）
+      const opts = { context: 'social', member }
       const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadUrlToImgBB(originalThumbnailUrl, member),
-        uploadToCloudinary(originalThumbnailUrl, member)
+        uploadToImgBB(originalThumbnailUrl, opts),
+        uploadToCloudinary(originalThumbnailUrl, opts)
       ])
 
       // 上傳成功，更新該影片的縮圖 URL
@@ -947,7 +868,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           newMedia.push({ url, type: 'video', localFile: file })
         } else {
           // 圖片上傳到 ImgBB（依成員分流）
-          const url = await uploadToImgBB(file, formData.member)
+          const url = await uploadToImgBB(file, { context: 'social', member: formData.member })
           newMedia.push({ url, type: 'image' })
         }
       }
@@ -1127,7 +1048,8 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         // 需要上傳新圖片
         try {
           console.log(`📤 上傳圖片 ${i + 1}...`)
-          const imgbbUrl = await uploadUrlToImgBB(m.url, member)
+          const uploadOpts = { context: 'social', member }
+          const imgbbUrl = await uploadToImgBB(m.url, uploadOpts)
           const mediaItem = {
             url: imgbbUrl,
             type: 'image'
@@ -1137,7 +1059,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           // Cloudinary 背景上傳（非阻塞）
           const itemIndex = result.length - 1
           cloudinaryTasks.push(
-            uploadToCloudinary(m.url, member).then(cloudinaryUrl => {
+            uploadToCloudinary(m.url, uploadOpts).then(cloudinaryUrl => {
               if (cloudinaryUrl) {
                 result[itemIndex].backupUrl = cloudinaryUrl
               }
@@ -1186,12 +1108,13 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           // 需要上傳新縮圖
           try {
             console.log(`📤 上傳影片 ${i + 1} 縮圖...`)
-            const imgbbUrl = await uploadUrlToImgBB(m.thumbnail, member)
+            const thumbOpts = { context: 'social', member }
+            const imgbbUrl = await uploadToImgBB(m.thumbnail, thumbOpts)
             videoItem.thumbnail = imgbbUrl
 
             // Cloudinary 背景上傳
             cloudinaryTasks.push(
-              uploadToCloudinary(m.thumbnail, member).then(cloudinaryUrl => {
+              uploadToCloudinary(m.thumbnail, thumbOpts).then(cloudinaryUrl => {
                 if (cloudinaryUrl) {
                   videoItem.thumbnailBackupUrl = cloudinaryUrl
                 }
