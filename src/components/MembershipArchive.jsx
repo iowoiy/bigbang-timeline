@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Plus, X, Image, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download, Menu } from 'lucide-react'
 import config from '../config'
+import { MEMBERS_NO_VICTORY as MEMBERS, MEMBER_ALIASES, getMemberColor, genId } from '../utils/members'
+import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
+import { formatDate, formatDateTime } from '../utils/date'
 import './MembershipArchive.css'
 
 // HLS 影片播放元件（支援 .m3u8，動態載入 hls.js）
@@ -38,60 +41,6 @@ function HlsVideo({ src, className }) {
       className={className}
     />
   )
-}
-
-// BIGBANG 成員列表與顏色（不含勝利）
-const MEMBERS = [
-  { name: '全員', color: '#E5A500' },
-  { name: 'G-Dragon', color: '#ed609f' },
-  { name: 'T.O.P', color: '#8fc126' },
-  { name: '太陽', color: '#d7171e' },
-  { name: '大聲', color: '#f4e727' },
-]
-
-// 成員名稱別名對應（篩選用）
-const MEMBER_ALIASES = {
-  '大聲': ['Daesung'],
-  '太陽': ['Taeyang'],
-}
-
-function getMemberColor(name) {
-  const alias = Object.entries(MEMBER_ALIASES).find(([, v]) => v.includes(name))
-  if (alias) return MEMBERS.find(m => m.name === alias[0])?.color || '#E5A500'
-  return MEMBERS.find(m => m.name === name)?.color || '#E5A500'
-}
-
-function genId() {
-  return 'mb-' + Date.now()
-}
-
-// 卡片縮圖：優先用 Cloudinary 縮圖（壓縮 + WebP），fallback 用原圖
-// 主圖源：Cloudinary，ImgBB 為備份
-function getThumbUrl(media) {
-  if (media.backupUrl?.includes('cloudinary.com/')) {
-    return media.backupUrl.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
-  }
-  return media.backupUrl || media.url
-}
-
-function getViewUrl(media) {
-  if (media.backupUrl?.includes('cloudinary.com/')) {
-    return media.backupUrl.replace('/upload/', '/upload/w_1080,q_auto,f_auto/')
-  }
-  return media.backupUrl || media.url
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
-}
-
-function formatDateTime(dateStr, timeStr) {
-  const datePart = formatDate(dateStr)
-  if (!datePart) return ''
-  if (!timeStr) return datePart
-  return `${datePart} ${timeStr}`
 }
 
 // b.stage 站台設定
@@ -191,25 +140,6 @@ async function uploadToCloudinary(imageUrl) {
     console.warn('Cloudinary 備份失敗:', err.message)
     return null
   }
-}
-
-// 判斷是否為 YouTube 連結
-function isYouTubeUrl(url) {
-  if (!url) return false
-  return /(?:youtube\.com\/(?:watch|embed|shorts)|youtu\.be\/)/i.test(url)
-}
-
-// 取得 YouTube 影片 ID
-function getYouTubeId(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return match ? match[1] : null
-}
-
-// 取得 YouTube 縮圖
-function getYouTubeThumbnail(url) {
-  const id = getYouTubeId(url)
-  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
 }
 
 function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
@@ -968,7 +898,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     }
 
     const item = {
-      id: editingItem?.id || genId(),
+      id: editingItem?.id || genId('mb'),
       member: formData.member,
       date: formData.date,
       time: formData.time,

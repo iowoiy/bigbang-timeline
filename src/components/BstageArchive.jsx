@@ -1,30 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Plus, X, Image, Camera, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, RefreshCw, Heart, MessageCircle } from 'lucide-react'
 import config from '../config'
+import { MEMBERS_NO_ALL as MEMBERS, getMemberColor, genId } from '../utils/members'
+import { getYouTubeId, getYouTubeThumbnail } from '../utils/media'
+import { formatDate } from '../utils/date'
 import './BstageArchive.css'
-
-// BIGBANG 成員列表與顏色（b.stage 沒有「全員」）
-const MEMBERS = [
-  { name: 'G-Dragon', color: '#ed609f' },
-  { name: 'T.O.P', color: '#8fc126' },
-  { name: '太陽', color: '#d7171e' },
-  { name: '大聲', color: '#f4e727' },
-  { name: '勝利', color: '#1e92c6' },
-]
-
-function getMemberColor(name) {
-  return MEMBERS.find(m => m.name === name)?.color || '#E5A500'
-}
-
-function genId() {
-  return 'b-' + Date.now()
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
-}
 
 // 取得社群備份用的 ImgBB API Key
 const BSTAGE_IMGBB_KEY = config.SOCIAL_IMGBB_API_KEY || config.IMGBB_API_KEY
@@ -86,20 +66,6 @@ async function uploadToCloudinary(imageUrl) {
     console.warn('Cloudinary 備份失敗:', err.message)
     return null
   }
-}
-
-// 解析 YouTube 連結，取得影片 ID
-function parseYouTubeUrl(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
-  return match ? match[1] : null
-}
-
-// 取得 YouTube 縮圖
-function getYouTubeThumbnail(url) {
-  const videoId = parseYouTubeUrl(url)
-  if (!videoId) return null
-  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
 }
 
 export default function BstageArchive({ isAdmin, onBack }) {
@@ -339,7 +305,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
   // 新增 YouTube 連結
   function addYoutubeLink() {
     if (!youtubeUrl.trim()) return
-    const videoId = parseYouTubeUrl(youtubeUrl)
+    const videoId = getYouTubeId(youtubeUrl)
     if (!videoId) {
       showToast('無法解析 YouTube 連結', 'error')
       return
@@ -490,7 +456,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
     }
 
     const item = {
-      id: editingItem?.id || genId(),
+      id: editingItem?.id || genId('b'),
       member: formData.member,
       date: formData.date,
       time: formData.time,
@@ -738,7 +704,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
                   {viewingItem.media[viewingMediaIndex]?.type === 'youtube' ? (
                     <div className="youtube-embed">
                       <iframe
-                        src={`https://www.youtube.com/embed/${parseYouTubeUrl(viewingItem.media[viewingMediaIndex].url)}`}
+                        src={`https://www.youtube.com/embed/${getYouTubeId(viewingItem.media[viewingMediaIndex].url)}`}
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen

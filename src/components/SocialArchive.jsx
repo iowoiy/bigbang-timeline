@@ -3,17 +3,10 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Plus, X, Image, Film, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
+import { MEMBERS, getMemberColor, genId } from '../utils/members'
+import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
+import { formatDate, formatDateTime } from '../utils/date'
 import './SocialArchive.css'
-
-// BIGBANG 成員列表與顏色
-const MEMBERS = [
-  { name: '全員', color: '#E5A500' },
-  { name: 'G-Dragon', color: '#ed609f' },
-  { name: 'T.O.P', color: '#8fc126' },
-  { name: '太陽', color: '#d7171e' },
-  { name: '大聲', color: '#f4e727' },
-  { name: '勝利', color: '#1e92c6' },
-]
 
 // 貼文類型
 const POST_TYPES = [
@@ -30,58 +23,6 @@ const IG_ACCOUNTS = {
   '大聲': 'd_lable_official',
   '勝利': '',
   '全員': 'bigbangofficial',
-}
-
-function getMemberColor(name) {
-  return MEMBERS.find(m => m.name === name)?.color || '#E5A500'
-}
-
-function genId() {
-  return 's-' + Date.now()
-}
-
-// YouTube 相關 helper
-function isYouTubeUrl(url) {
-  return /(?:youtube\.com\/(?:watch|embed|shorts)|youtu\.be\/)/i.test(url)
-}
-
-function getYouTubeId(url) {
-  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return match ? match[1] : null
-}
-
-function getYouTubeThumbnail(url) {
-  const id = getYouTubeId(url)
-  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
-}
-
-// 主圖源：Cloudinary，ImgBB 為備份
-function getThumbUrl(media) {
-  const backup = media.backupUrl || media.thumbnailBackupUrl
-  if (backup?.includes('cloudinary.com/')) {
-    return backup.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
-  }
-  return backup || media.thumbnail || media.url
-}
-
-function getViewUrl(media) {
-  if (media.backupUrl?.includes('cloudinary.com/')) {
-    return media.backupUrl.replace('/upload/', '/upload/w_1080,q_auto,f_auto/')
-  }
-  return media.backupUrl || media.url
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
-}
-
-function formatDateTime(dateStr, timeStr) {
-  if (!dateStr || !timeStr) return formatDate(dateStr)
-  // date 和 time 已經是 KST，直接用字串解析顯示
-  const [y, m, d] = dateStr.split('-')
-  return `${Number(y)}/${Number(m)}/${Number(d)} ${timeStr}`
 }
 
 // 取得社群備份用的 ImgBB API Key（依成員分流，T.O.P 用獨立帳號）
@@ -1057,7 +998,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     }
 
     const item = {
-      id: editingItem?.id || genId(),
+      id: editingItem?.id || genId('s'),
       type: formData.type,
       member: formData.member,
       date: formData.date,

@@ -4,45 +4,13 @@ import config from './config'
 import { AUTHORS, FAN_SINCE, findAuthor, authorName, authorEmoji, authorColor, badgeStyle } from './data/authors'
 import { CATEGORIES, catColor, catBg, catLabel, monthLabel, dateLabel } from './data/categories'
 import { DEFAULT_EVENTS } from './data/defaultEvents'
+import { MEMBERS, getMemberColor, genId } from './utils/members'
+import { getThumbUrl, parseVideoUrl, isImageUrl, getVideoThumbnail } from './utils/media'
+import { formatTime } from './utils/date'
 const SocialArchive = lazy(() => import('./components/SocialArchive'))
 const MembershipArchive = lazy(() => import('./components/MembershipArchive'))
 
 // D1 API URL (已從 JSONBin 遷移)
-
-// BIGBANG 成員列表與顏色
-const MEMBERS = [
-  { name: '全員', color: '#D4AF37' },
-  { name: 'G-Dragon', color: '#ed609f' },
-  { name: 'T.O.P', color: '#8fc126' },
-  { name: '太陽', color: '#d7171e' },
-  { name: '大聲', color: '#f4e727' },
-  { name: '勝利', color: '#1e92c6' },
-]
-
-function getMemberColor(name) {
-  return MEMBERS.find(m => m.name === name)?.color || '#D4AF37'
-}
-
-// ========== 工具函式 ==========
-function genId() {
-  return 'e-' + Date.now()
-}
-
-function formatTime(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-// ========== 媒體工具函式 ==========
-// 卡片縮圖：Cloudinary 優先 + 壓縮
-function getThumbUrl(media) {
-  const backup = media.backupUrl || media.thumbnailBackupUrl
-  if (backup?.includes('cloudinary.com/')) {
-    return backup.replace('/upload/', '/upload/w_400,q_auto,f_auto/')
-  }
-  return backup || media.thumbnail || media.url
-}
 
 // 上傳圖片到 ImgBB
 async function uploadToImgBB(file) {
@@ -119,51 +87,6 @@ async function uploadWithBackup(file) {
   return { url: imgbbUrl, backupUrl: cloudinaryUrl }
 }
 
-// 解析影片連結，回傳嵌入資訊
-function parseVideoUrl(url) {
-  if (!url) return null
-
-  // YouTube
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/)
-  if (ytMatch) {
-    return { type: 'youtube', id: ytMatch[1] }
-  }
-
-  // Instagram Reels / Post
-  const igMatch = url.match(/instagram\.com\/(?:reel|reels|p)\/([a-zA-Z0-9_-]+)/)
-  if (igMatch) {
-    return { type: 'instagram', id: igMatch[1], url }
-  }
-
-  // X (Twitter)
-  const xMatch = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/)
-  if (xMatch) {
-    return { type: 'twitter', id: xMatch[1], url }
-  }
-
-  return null
-}
-
-// 判斷是否為圖片連結
-function isImageUrl(url) {
-  if (!url) return false
-  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) ||
-         url.includes('i.ibb.co') ||
-         url.includes('imgur.com')
-}
-
-// 取得影片縮圖
-function getVideoThumbnail(url) {
-  const video = parseVideoUrl(url)
-  if (!video) return null
-
-  if (video.type === 'youtube') {
-    return `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`
-  }
-
-  // IG 和 Twitter 無法直接取得縮圖
-  return null
-}
 
 // ========== API 函式 ==========
 async function loadEvents() {
@@ -555,7 +478,7 @@ export default function App() {
   }
 
   const openNew = () => {
-    const newId = genId()
+    const newId = genId('e')
     const today = new Date()
     setForm({
       id: newId, year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate(), time: '', cats: ['music'],
