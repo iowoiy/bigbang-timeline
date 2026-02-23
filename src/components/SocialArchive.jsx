@@ -7,7 +7,7 @@ import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../da
 import { MEMBERS, getMemberColor, genId } from '../utils/members'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
-import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
+import { uploadToImgBB, uploadToCloudinary, uploadWithBackup } from '../utils/upload'
 import { socialApi } from '../utils/api'
 import './ArchiveBase.css'
 import './SocialArchive.css'
@@ -884,9 +884,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         )
       }))
 
-      if (cloudinaryUrl) {
-        console.log(`✅ 圖片 ${index + 1} 雙重備份完成`)
-      }
     } catch (err) {
       console.warn(`圖片 ${index + 1} 上傳失敗`, err)
       // 上傳失敗，標記為失敗但保留原始 URL
@@ -956,9 +953,9 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           const url = URL.createObjectURL(file)
           newMedia.push({ url, type: 'video', localFile: file })
         } else {
-          // 圖片上傳到 ImgBB（依成員分流）
-          const url = await uploadToImgBB(file, { context: 'social', member: formData.member })
-          newMedia.push({ url, type: 'image' })
+          // 圖片同時上傳到 ImgBB（主）+ Cloudinary（備份）
+          const { url, backupUrl } = await uploadWithBackup(file, { context: 'social', member: formData.member })
+          newMedia.push({ url, type: 'image', ...(backupUrl && { backupUrl }) })
         }
       }
       setFormData(prev => ({

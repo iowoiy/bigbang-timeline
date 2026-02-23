@@ -46,6 +46,8 @@ function getCloudinaryConf(context, member) {
 // 上傳檔案或 URL 到 ImgBB
 export async function uploadToImgBB(fileOrUrl, { context = 'timeline', member } = {}) {
   const key = getImgBBKey(context, member)
+  if (!key) throw new Error('ImgBB API key 未設定')
+
   const formData = new FormData()
   formData.append('image', fileOrUrl)
   const res = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, {
@@ -54,16 +56,13 @@ export async function uploadToImgBB(fileOrUrl, { context = 'timeline', member } 
   })
   const data = await res.json()
   if (data.success) return data.data.url
-  throw new Error('上傳失敗')
+  throw new Error(data?.error?.message || '上傳失敗')
 }
 
 // 上傳檔案或 URL 到 Cloudinary 作為備份
 export async function uploadToCloudinary(fileOrUrl, { context = 'timeline', member } = {}) {
   const { cloudName, preset } = getCloudinaryConf(context, member)
-  if (!cloudName || !preset) {
-    console.warn('Cloudinary 未設定，跳過備份')
-    return null
-  }
+  if (!cloudName || !preset) return null
 
   try {
     const formData = new FormData()
@@ -76,10 +75,7 @@ export async function uploadToCloudinary(fileOrUrl, { context = 'timeline', memb
     )
     const data = await res.json()
 
-    if (data.secure_url) {
-      console.log('✅ Cloudinary 備份成功:', data.secure_url)
-      return data.secure_url
-    }
+    if (data.secure_url) return data.secure_url
     throw new Error(data.error?.message || '上傳失敗')
   } catch (err) {
     console.warn('Cloudinary 備份失敗:', err.message)
