@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Plus, X, Image, Film, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, X, Image, Film, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Instagram, Link2, Upload, Search, Grid, List, Play, CheckSquare, Square, RefreshCw, ImageOff, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import NavMenu from './NavMenu'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
@@ -169,10 +169,15 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [toast, setToast] = useState(null)
 
   // 篩選
-  const [filterMember, setFilterMember] = useState('all')
+  const [filterMembers, setFilterMembers] = useState([]) // 多選成員
   const [filterType, setFilterType] = useState('all')
   const [filterHasVideo, setFilterHasVideo] = useState(false) // 只顯示含影片的
   const [filterBrokenImages, setFilterBrokenImages] = useState(false) // 只顯示有壞圖的
+  const [filterYear, setFilterYear] = useState('all') // 年份篩選
+  const [sortDesc, setSortDesc] = useState(true) // 排序：true = 新到舊，false = 舊到新
+  const [yearDropdownOpen, setYearDropdownOpen] = useState(false)
+  const [memberDropdownOpen, setMemberDropdownOpen] = useState(false)
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState('grid') // grid | list
 
@@ -207,6 +212,16 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 })
   const [currentSyncingId, setCurrentSyncingId] = useState(null) // 目前正在同步的項目 ID
   const batchCancelRef = useRef(false) // 用來取消批次同步
+
+  // 批次新增
+  const [showBatchModal, setShowBatchModal] = useState(false)
+  const [batchUrls, setBatchUrls] = useState('')
+  const [batchCreating, setBatchCreating] = useState(false)
+  const [batchCreateProgress, setBatchCreateProgress] = useState({ current: 0, total: 0 })
+  const [batchResults, setBatchResults] = useState([]) // [{ url, status, member, type, error }]
+  const batchCreateCancelRef = useRef(false)
+  const [showScriptHelper, setShowScriptHelper] = useState(false)
+  const [scriptCopied, setScriptCopied] = useState(false)
 
   // 確認 Modal
   const [confirmModal, setConfirmModal] = useState(null)
@@ -381,19 +396,37 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     }
   }
 
+  // 可選的年份列表（從資料中提取）
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set()
+    archives.forEach(item => {
+      if (item.date) {
+        const year = item.date.substring(0, 4)
+        if (year) yearsSet.add(year)
+      }
+    })
+    const years = Array.from(yearsSet).sort((a, b) => b - a) // 新到舊排序
+    return sortDesc ? years : years.reverse()
+  }, [archives, sortDesc])
+
   // 篩選後的資料
   const filteredArchives = useMemo(() => {
     return archives
       .filter(item => {
-        if (filterMember !== 'all' && item.member !== filterMember) return false
+        if (filterMembers.length > 0 && !filterMembers.includes(item.member)) return false
         if (filterType !== 'all' && item.type !== filterType) return false
         if (filterHasVideo && !hasVideo(item)) return false
         if (filterBrokenImages && !hasBrokenImages(item)) return false
+        if (filterYear !== 'all' && item.date && !item.date.startsWith(filterYear)) return false
         if (searchText && !item.caption?.toLowerCase().includes(searchText.toLowerCase())) return false
         return true
       })
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-  }, [archives, filterMember, filterType, filterHasVideo, filterBrokenImages, searchText, brokenImageMap])
+      .sort((a, b) => {
+        const dateA = new Date(a.date)
+        const dateB = new Date(b.date)
+        return sortDesc ? dateB - dateA : dateA - dateB
+      })
+  }, [archives, filterMembers, filterType, filterHasVideo, filterBrokenImages, filterYear, searchText, sortDesc, brokenImageMap])
 
   // 測量容器寬度，計算每行幾列
   useEffect(() => {
@@ -861,24 +894,27 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     showToast(`已新增 ${urls.length} 個媒體`)
   }
 
-  // 單張圖片背景上傳（同時上傳 ImgBB + Cloudinary 備份）
+  // 單張圖片背景上傳（同時上傳 Cloudinary 主要 + ImgBB 備用）
   async function uploadSingleImage(originalUrl, index, member) {
     try {
-      // 同時上傳到 ImgBB 和 Cloudinary（依成員分流）
+      // 同時上傳到 Cloudinary 和 ImgBB（依成員分流）
       const opts = { context: 'social', member }
-      const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadToImgBB(originalUrl, opts),
-        uploadToCloudinary(originalUrl, opts)
+      const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+        uploadToCloudinary(originalUrl, opts),
+        uploadToImgBB(originalUrl, opts).catch(err => {
+          console.warn('ImgBB 備份失敗:', err.message)
+          return null
+        })
       ])
 
-      // 上傳成功，更新該圖片的 URL（主要用 ImgBB，備份用 Cloudinary）
+      // 上傳成功，更新該圖片的 URL（主要用 Cloudinary，備份用 ImgBB）
       setFormData(prev => ({
         ...prev,
         media: prev.media.map((m, i) =>
           i === index ? {
             ...m,
-            url: imgbbUrl,
-            backupUrl: cloudinaryUrl, // Cloudinary 備份 URL
+            url: cloudinaryUrl,
+            backupUrl: imgbbUrl, // ImgBB 備份 URL
             uploading: false
           } : m
         )
@@ -898,14 +934,17 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     }
   }
 
-  // 影片縮圖背景上傳（同時上傳 ImgBB + Cloudinary 備份）
+  // 影片縮圖背景上傳（同時上傳 Cloudinary 主要 + ImgBB 備用）
   async function uploadVideoThumbnail(originalThumbnailUrl, index, member) {
     try {
-      // 同時上傳到 ImgBB 和 Cloudinary（依成員分流）
+      // 同時上傳到 Cloudinary 和 ImgBB（依成員分流）
       const opts = { context: 'social', member }
-      const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadToImgBB(originalThumbnailUrl, opts),
-        uploadToCloudinary(originalThumbnailUrl, opts)
+      const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+        uploadToCloudinary(originalThumbnailUrl, opts),
+        uploadToImgBB(originalThumbnailUrl, opts).catch(err => {
+          console.warn('ImgBB 備份失敗:', err.message)
+          return null
+        })
       ])
 
       // 上傳成功，更新該影片的縮圖 URL
@@ -914,14 +953,14 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         media: prev.media.map((m, i) =>
           i === index ? {
             ...m,
-            thumbnail: imgbbUrl,
-            thumbnailBackupUrl: cloudinaryUrl, // Cloudinary 備份縮圖
+            thumbnail: cloudinaryUrl,
+            thumbnailBackupUrl: imgbbUrl, // ImgBB 備份縮圖
             thumbnailUploading: false
           } : m
         )
       }))
 
-      if (cloudinaryUrl) {
+      if (imgbbUrl) {
         console.log(`✅ 影片 ${index + 1} 縮圖雙重備份完成`)
       }
     } catch (err) {
@@ -953,7 +992,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           const url = URL.createObjectURL(file)
           newMedia.push({ url, type: 'video', localFile: file })
         } else {
-          // 圖片同時上傳到 ImgBB（主）+ Cloudinary（備份）
+          // 圖片同時上傳到 Cloudinary（主）+ ImgBB（備份）
           const { url, backupUrl } = await uploadWithBackup(file, { context: 'social', member: formData.member })
           newMedia.push({ url, type: 'image', ...(backupUrl && { backupUrl }) })
         }
@@ -1092,10 +1131,10 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   // 上傳媒體列表（智慧同步：檢查現有備份是否可用，只上傳壞掉或新的圖）
   // existingMedia: 現有的已備份媒體列表（可選）
   // member: 成員名稱（用於分流圖源，如 T.O.P 獨立帳號）
-  // ImgBB 上傳成功就回傳，Cloudinary 在背景上傳
+  // Cloudinary 上傳成功就回傳，ImgBB 在背景上傳
   async function uploadMediaList(mediaList, existingMedia = [], member) {
     const result = []
-    const cloudinaryTasks = [] // 背景上傳任務
+    const imgbbTasks = [] // 背景上傳任務
 
     for (let i = 0; i < mediaList.length; i++) {
       const m = mediaList[i]
@@ -1104,23 +1143,23 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       if (m.type === 'image') {
         // 檢查現有備份是否可用
         if (existing?.type === 'image') {
-          // 先檢查主要備份（ImgBB）
-          if (existing?.url?.includes('i.ibb.co')) {
+          // 先檢查主要備份（Cloudinary）
+          if (existing?.url?.includes('cloudinary')) {
             const isAlive = await checkImageLoadable(existing.url)
             if (isAlive) {
-              console.log(`✅ 圖片 ${i + 1} ImgBB 備份可用，跳過上傳`)
+              console.log(`✅ 圖片 ${i + 1} Cloudinary 備份可用，跳過上傳`)
               result.push({ ...existing })
               continue
             }
           }
 
-          // ImgBB 壞了，檢查 Cloudinary 備份
-          if (existing?.backupUrl?.includes('cloudinary')) {
+          // Cloudinary 壞了，檢查 ImgBB 備份
+          if (existing?.backupUrl?.includes('i.ibb.co')) {
             const isBackupAlive = await checkImageLoadable(existing.backupUrl)
             if (isBackupAlive) {
-              console.log(`✅ 圖片 ${i + 1} Cloudinary 備份可用，切換使用`)
+              console.log(`✅ 圖片 ${i + 1} ImgBB 備份可用，切換使用`)
               result.push({
-                url: existing.backupUrl, // 用 Cloudinary 當主要 URL
+                url: existing.backupUrl, // 用 ImgBB 當主要 URL
                 type: 'image',
                 backupUrl: existing.backupUrl
               })
@@ -1135,21 +1174,21 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         try {
           console.log(`📤 上傳圖片 ${i + 1}...`)
           const uploadOpts = { context: 'social', member }
-          const imgbbUrl = await uploadToImgBB(m.url, uploadOpts)
+          const cloudinaryUrl = await uploadToCloudinary(m.url, uploadOpts)
           const mediaItem = {
-            url: imgbbUrl,
+            url: cloudinaryUrl,
             type: 'image'
           }
           result.push(mediaItem)
 
-          // Cloudinary 背景上傳（非阻塞）
+          // ImgBB 背景上傳（非阻塞）
           const itemIndex = result.length - 1
-          cloudinaryTasks.push(
-            uploadToCloudinary(m.url, uploadOpts).then(cloudinaryUrl => {
-              if (cloudinaryUrl) {
-                result[itemIndex].backupUrl = cloudinaryUrl
+          imgbbTasks.push(
+            uploadToImgBB(m.url, uploadOpts).then(imgbbUrl => {
+              if (imgbbUrl) {
+                result[itemIndex].backupUrl = imgbbUrl
               }
-            }).catch(err => console.warn('Cloudinary 背景上傳失敗:', err))
+            }).catch(err => console.warn('ImgBB 背景上傳失敗:', err))
           )
         } catch (err) {
           console.warn('圖片上傳失敗:', err)
@@ -1162,11 +1201,11 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         if (m.thumbnail) {
           // 檢查現有縮圖備份是否可用
           if (existing?.type === 'video') {
-            // 先檢查主要縮圖備份（ImgBB）
-            if (existing?.thumbnail?.includes('i.ibb.co')) {
+            // 先檢查主要縮圖備份（Cloudinary）
+            if (existing?.thumbnail?.includes('cloudinary')) {
               const isAlive = await checkImageLoadable(existing.thumbnail)
               if (isAlive) {
-                console.log(`✅ 影片 ${i + 1} 縮圖 ImgBB 備份可用，跳過上傳`)
+                console.log(`✅ 影片 ${i + 1} 縮圖 Cloudinary 備份可用，跳過上傳`)
                 videoItem.thumbnail = existing.thumbnail
                 if (existing.thumbnailBackupUrl) {
                   videoItem.thumbnailBackupUrl = existing.thumbnailBackupUrl
@@ -1176,11 +1215,11 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               }
             }
 
-            // ImgBB 壞了，檢查 Cloudinary 縮圖備份
-            if (existing?.thumbnailBackupUrl?.includes('cloudinary')) {
+            // Cloudinary 壞了，檢查 ImgBB 縮圖備份
+            if (existing?.thumbnailBackupUrl?.includes('i.ibb.co')) {
               const isBackupAlive = await checkImageLoadable(existing.thumbnailBackupUrl)
               if (isBackupAlive) {
-                console.log(`✅ 影片 ${i + 1} 縮圖 Cloudinary 備份可用，切換使用`)
+                console.log(`✅ 影片 ${i + 1} 縮圖 ImgBB 備份可用，切換使用`)
                 videoItem.thumbnail = existing.thumbnailBackupUrl
                 videoItem.thumbnailBackupUrl = existing.thumbnailBackupUrl
                 result.push(videoItem)
@@ -1195,16 +1234,16 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           try {
             console.log(`📤 上傳影片 ${i + 1} 縮圖...`)
             const thumbOpts = { context: 'social', member }
-            const imgbbUrl = await uploadToImgBB(m.thumbnail, thumbOpts)
-            videoItem.thumbnail = imgbbUrl
+            const cloudinaryUrl = await uploadToCloudinary(m.thumbnail, thumbOpts)
+            videoItem.thumbnail = cloudinaryUrl
 
-            // Cloudinary 背景上傳
-            cloudinaryTasks.push(
-              uploadToCloudinary(m.thumbnail, thumbOpts).then(cloudinaryUrl => {
-                if (cloudinaryUrl) {
-                  videoItem.thumbnailBackupUrl = cloudinaryUrl
+            // ImgBB 背景上傳
+            imgbbTasks.push(
+              uploadToImgBB(m.thumbnail, thumbOpts).then(imgbbUrl => {
+                if (imgbbUrl) {
+                  videoItem.thumbnailBackupUrl = imgbbUrl
                 }
-              }).catch(err => console.warn('Cloudinary 縮圖背景上傳失敗:', err))
+              }).catch(err => console.warn('ImgBB 縮圖背景上傳失敗:', err))
             )
           } catch (err) {
             console.warn('縮圖上傳失敗:', err)
@@ -1215,10 +1254,10 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       }
     }
 
-    // 背景執行 Cloudinary 上傳（不等待）
-    if (cloudinaryTasks.length > 0) {
-      Promise.all(cloudinaryTasks).then(() => {
-        console.log('✅ Cloudinary 背景上傳完成')
+    // 背景執行 ImgBB 上傳（不等待）
+    if (imgbbTasks.length > 0) {
+      Promise.all(imgbbTasks).then(() => {
+        console.log('✅ ImgBB 背景上傳完成')
       })
     }
 
@@ -1388,6 +1427,179 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     }
   }
 
+  // IG 帳號貼文 URL 收集腳本（供使用者在 IG 頁面 console 執行）
+  const IG_PROFILE_SCRIPT = `(async()=>{const d=ms=>new Promise(r=>setTimeout(r,ms));const urls=new Set();let last=0,retries=0;console.log('開始收集貼文 URL...');while(retries<5){document.querySelectorAll('a[href*="/p/"],a[href*="/reel/"],a[href*="/reels/"]').forEach(a=>{const h=a.href.split('?')[0];if(/\\/(p|reel|reels)\\//.test(h))urls.add(h)});console.log('已找到 '+urls.size+' 筆');if(urls.size===last)retries++;else{retries=0;last=urls.size}window.scrollTo(0,document.body.scrollHeight);await d(1500)}const r=[...urls].join('\\n');console.log('\\n完成！共 '+urls.size+' 筆：\\n'+r);try{await navigator.clipboard.writeText(r);console.log('\\n✅ 已複製到剪貼簿')}catch{console.log('\\n⚠️ 請手動複製上方文字')}})();`
+
+  // 批次新增：解析 textarea 裡的 URL
+  function parseBatchUrls(text) {
+    const seen = new Set()
+    return text
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line && /instagram\.com\/(?:[^\/]+\/)?(p|reel|reels|tv)\//.test(line))
+      .filter(line => {
+        const key = line.split('?')[0].replace(/\/$/, '')
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+  }
+
+  // 批次新增：取消
+  function cancelBatchCreate() {
+    batchCreateCancelRef.current = true
+    showToast('正在取消批次備份...', 'info')
+  }
+
+  // 批次新增：主流程
+  async function handleBatchCreate() {
+    const urls = parseBatchUrls(batchUrls)
+    if (urls.length === 0) {
+      showToast('沒有有效的 IG 連結', 'error')
+      return
+    }
+
+    // 檢查重複
+    const existingUrls = new Set(archives.map(a => a.igUrl).filter(Boolean))
+    const dedupedUrls = []
+    const skippedDuplicates = []
+    for (const url of urls) {
+      // 正規化 URL 以比對（移除 query string）
+      const normalized = url.split('?')[0].replace(/\/$/, '')
+      const isDup = archives.some(a => {
+        if (!a.igUrl) return false
+        const existNorm = a.igUrl.split('?')[0].replace(/\/$/, '')
+        return existNorm === normalized
+      })
+      if (isDup) {
+        skippedDuplicates.push(url)
+      } else {
+        dedupedUrls.push(url)
+      }
+    }
+
+    if (dedupedUrls.length === 0) {
+      showToast(`全部 ${skippedDuplicates.length} 筆都是重複的`, 'error')
+      return
+    }
+
+    // 初始化
+    batchCreateCancelRef.current = false
+    setBatchCreating(true)
+    setBatchCreateProgress({ current: 0, total: dedupedUrls.length })
+    setBatchResults(dedupedUrls.map(url => ({ url, status: 'pending' })))
+
+    let successCount = 0
+
+    for (let i = 0; i < dedupedUrls.length; i++) {
+      if (batchCreateCancelRef.current) break
+
+      const url = dedupedUrls[i]
+
+      // 標記處理中
+      setBatchResults(prev => prev.map((r, idx) => idx === i ? { ...r, status: 'processing' } : r))
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      try {
+        // 1. 抓取 IG 資料
+        console.log(`[批次備份 ${i + 1}] 開始抓取: ${url}`)
+        const data = await fetchIGData(url)
+        console.log(`[批次備份 ${i + 1}] fetchIGData 回傳:`, JSON.stringify(data, null, 2))
+
+        if (batchCreateCancelRef.current) break
+
+        if (!data.success || !data.media?.length) {
+          const reason = data.error || data.message || (data.success ? '無媒體' : '抓取失敗')
+          console.warn(`[批次備份 ${i + 1}] 跳過: ${reason}`)
+          setBatchResults(prev => prev.map((r, idx) => idx === i ? { ...r, status: 'error', error: reason } : r))
+          setBatchCreateProgress(p => ({ ...p, current: p.current + 1 }))
+          continue
+        }
+
+        // 2. 解析成員與類型
+        const resolved = resolveUsername(data.owner?.username, url)
+        const detectedMember = detectMemberFromUsername(resolved)
+        const extraConfig = getExtraAccountConfig(resolved)
+        console.log(`[批次備份 ${i + 1}] 成員: ${detectedMember}, username: ${resolved}, media: ${data.media.length} 筆`)
+
+        // 3. 解析日期時間
+        let postDate = new Date().toISOString().split('T')[0]
+        let postTime = ''
+        if (extraConfig?.dateFormat && data.caption) {
+          const parsedDate = parseDateFromCaption(data.caption, extraConfig.dateFormat)
+          if (parsedDate) postDate = parsedDate
+        } else if (data.date) {
+          const utc = new Date(data.date)
+          const tw = new Date(utc.getTime() + 8 * 60 * 60 * 1000)
+          postDate = `${tw.getUTCFullYear()}-${String(tw.getUTCMonth() + 1).padStart(2, '0')}-${String(tw.getUTCDate()).padStart(2, '0')}`
+          postTime = `${String(tw.getUTCHours()).padStart(2, '0')}:${String(tw.getUTCMinutes()).padStart(2, '0')}`
+        }
+        if (!extraConfig && detectedMember === '全員' && data.caption) {
+          const fallbackDate = parseDateFromCaption(data.caption, 'auto')
+          if (fallbackDate) {
+            postDate = fallbackDate
+            postTime = ''
+          }
+        }
+        console.log(`[批次備份 ${i + 1}] 日期: ${postDate} ${postTime}`)
+
+        // 4. 上傳媒體
+        console.log(`[批次備份 ${i + 1}] 開始上傳媒體...`)
+        const uploadedMedia = await uploadMediaList(data.media, [], detectedMember)
+        console.log(`[批次備份 ${i + 1}] 上傳完成:`, uploadedMedia.map(m => ({ url: m.url?.substring(0, 50), type: m.type })))
+
+        if (batchCreateCancelRef.current) break
+
+        // 5. 建立 item 並存入 D1
+        const postType = extraConfig?.type || data.type || 'post'
+        const item = {
+          id: genId('s'),
+          type: postType,
+          member: detectedMember,
+          date: postDate,
+          time: postTime,
+          igUrl: url,
+          caption: data.caption || '',
+          media: uploadedMedia.map(m => ({
+            url: m.url,
+            type: m.type,
+            ...(m.backupUrl && { backupUrl: m.backupUrl }),
+            ...(m.thumbnail && { thumbnail: m.thumbnail }),
+            ...(m.thumbnailBackupUrl && { thumbnailBackupUrl: m.thumbnailBackupUrl }),
+          })),
+          notes: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+
+        console.log(`[批次備份 ${i + 1}] 存入 D1...`, { id: item.id, type: item.type, member: item.member, mediaCount: item.media.length })
+        await socialApi.create(item)
+        setArchives(prev => [item, ...prev])
+        successCount++
+        console.log(`[批次備份 ${i + 1}] ✅ 成功`)
+
+        setBatchResults(prev => prev.map((r, idx) => idx === i ? { ...r, status: 'success', member: detectedMember, type: postType } : r))
+      } catch (err) {
+        console.error(`[批次備份 ${i + 1}] ❌ 失敗:`, err)
+        setBatchResults(prev => prev.map((r, idx) => idx === i ? { ...r, status: 'error', error: err.message || '未知錯誤' } : r))
+      }
+
+      setBatchCreateProgress(p => ({ ...p, current: p.current + 1 }))
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+
+    const wasCancelled = batchCreateCancelRef.current
+    setBatchCreating(false)
+
+    if (wasCancelled) {
+      showToast(`已取消（已完成 ${successCount} 筆）`, 'info')
+    } else {
+      const failCount = dedupedUrls.length - successCount
+      const dupMsg = skippedDuplicates.length > 0 ? `，跳過 ${skippedDuplicates.length} 筆重複` : ''
+      showToast(`批次備份完成：${successCount} 筆成功${failCount > 0 ? `，${failCount} 筆失敗` : ''}${dupMsg}`)
+    }
+  }
+
   // ===== Render =====
 
   if (loading) {
@@ -1407,6 +1619,9 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           <h1>📱 社群備份</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="add-btn" onClick={() => setShowBatchModal(true)} title="批次備份">
+            <Upload size={20} />
+          </button>
           <button className="add-btn" onClick={openAddModal} title="新增備份">
             <Plus size={20} />
           </button>
@@ -1419,29 +1634,108 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       {/* Filters */}
       <div className="archive-filters">
         <div className="filter-row">
-          {/* 成員篩選 */}
-          <select
-            value={filterMember}
-            onChange={e => setFilterMember(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">所有成員</option>
-            {MEMBERS.map(m => (
-              <option key={m.name} value={m.name}>{m.name}</option>
-            ))}
-          </select>
+          {/* 成員篩選（多選） */}
+          <div className="filter-dropdown">
+            <button
+              className={`filter-btn dropdown-toggle ${filterMembers.length > 0 ? 'active' : ''}`}
+              onClick={() => { setMemberDropdownOpen(!memberDropdownOpen); setYearDropdownOpen(false); setTypeDropdownOpen(false) }}
+            >
+              {filterMembers.length === 0 ? '成員' : `成員(${filterMembers.length})`} <span className="dropdown-arrow">{memberDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+            {memberDropdownOpen && (
+              <div className="filter-dropdown-list">
+                <button
+                  className={`filter-dropdown-item ${filterMembers.length === 0 ? 'active' : ''}`}
+                  onClick={() => setFilterMembers([])}
+                >
+                  全部
+                </button>
+                {MEMBERS.filter(m => m.name !== '全員').map(m => (
+                  <button
+                    key={m.name}
+                    className={`filter-dropdown-item ${filterMembers.includes(m.name) ? 'active' : ''}`}
+                    style={{ color: filterMembers.includes(m.name) ? m.color : undefined }}
+                    onClick={() => {
+                      if (filterMembers.includes(m.name)) {
+                        setFilterMembers(filterMembers.filter(x => x !== m.name))
+                      } else {
+                        setFilterMembers([...filterMembers, m.name])
+                      }
+                    }}
+                  >
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* 類型篩選 */}
-          <select
-            value={filterType}
-            onChange={e => setFilterType(e.target.value)}
-            className="filter-select"
+          <div className="filter-dropdown">
+            <button
+              className={`filter-btn dropdown-toggle ${filterType !== 'all' ? 'active' : ''}`}
+              onClick={() => { setTypeDropdownOpen(!typeDropdownOpen); setMemberDropdownOpen(false); setYearDropdownOpen(false) }}
+            >
+              {filterType === 'all' ? '類型' : POST_TYPES.find(t => t.id === filterType)?.label || filterType} <span className="dropdown-arrow">{typeDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+            {typeDropdownOpen && (
+              <div className="filter-dropdown-list">
+                <button
+                  className={`filter-dropdown-item ${filterType === 'all' ? 'active' : ''}`}
+                  onClick={() => { setFilterType('all'); setTypeDropdownOpen(false) }}
+                >
+                  全部
+                </button>
+                {POST_TYPES.map(t => (
+                  <button
+                    key={t.id}
+                    className={`filter-dropdown-item ${filterType === t.id ? 'active' : ''}`}
+                    onClick={() => { setFilterType(t.id); setTypeDropdownOpen(false) }}
+                  >
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 年份篩選 */}
+          <div className="filter-dropdown">
+            <button
+              className="filter-btn dropdown-toggle"
+              onClick={() => { setYearDropdownOpen(!yearDropdownOpen); setMemberDropdownOpen(false); setTypeDropdownOpen(false) }}
+            >
+              {filterYear === 'all' ? '年份' : filterYear} <span className="dropdown-arrow">{yearDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+            {yearDropdownOpen && (
+              <div className="filter-dropdown-list">
+                <button
+                  className={`filter-dropdown-item ${filterYear === 'all' ? 'active' : ''}`}
+                  onClick={() => { setFilterYear('all'); setYearDropdownOpen(false) }}
+                >
+                  全部
+                </button>
+                {availableYears.map(year => (
+                  <button
+                    key={year}
+                    className={`filter-dropdown-item ${filterYear === year ? 'active' : ''}`}
+                    onClick={() => { setFilterYear(year); setYearDropdownOpen(false) }}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 排序切換 */}
+          <button
+            className="year-sort-btn"
+            onClick={() => setSortDesc(!sortDesc)}
+            title={sortDesc ? '目前：新 → 舊' : '目前：舊 → 新'}
           >
-            <option value="all">所有類型</option>
-            {POST_TYPES.map(t => (
-              <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
-            ))}
-          </select>
+            <ArrowUpDown size={12} />
+          </button>
 
           {/* 含影片篩選 */}
           <button
@@ -2049,6 +2343,150 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                 <Save size={16} /> {saving ? '儲存中...' : '儲存'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 批次新增 Modal */}
+      {showBatchModal && (
+        <div className="modal-overlay" onClick={() => !batchCreating && setShowBatchModal(false)}>
+          <div className="archive-modal batch-create-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2><Upload size={20} /> 批次備份 IG 貼文</h2>
+              {!batchCreating && (
+                <button className="close-btn" onClick={() => setShowBatchModal(false)}>
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            {!batchCreating && batchResults.length === 0 && (
+              <div className="batch-create-input">
+                <label>每行貼上一個 IG 連結：</label>
+
+                <div className="script-helper">
+                  <button
+                    className="script-helper-toggle"
+                    onClick={() => { setShowScriptHelper(!showScriptHelper); setScriptCopied(false) }}
+                  >
+                    <Instagram size={14} />
+                    <span>從 IG 帳號一次匯入所有貼文 URL</span>
+                    <ChevronDown size={14} style={{ transform: showScriptHelper ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+                  {showScriptHelper && (
+                    <div className="script-helper-content">
+                      <ol className="script-helper-steps">
+                        <li>在瀏覽器開啟目標 IG 帳號頁面</li>
+                        <li>按 <kbd>F12</kbd> 開啟 DevTools → <kbd>Console</kbd></li>
+                        <li>點下方按鈕複製腳本，貼到 Console 按 Enter</li>
+                        <li>等待自動滾動完成，URL 會複製到剪貼簿</li>
+                        <li>回到這裡，直接 Ctrl+V 貼上</li>
+                      </ol>
+                      <button
+                        className="copy-script-btn"
+                        onClick={() => {
+                          navigator.clipboard.writeText(IG_PROFILE_SCRIPT)
+                          setScriptCopied(true)
+                          setTimeout(() => setScriptCopied(false), 3000)
+                        }}
+                      >
+                        {scriptCopied ? <><Check size={14} /> 已複製！</> : <><Link2 size={14} /> 複製腳本</>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <textarea
+                  className="batch-urls-textarea"
+                  value={batchUrls}
+                  onChange={e => setBatchUrls(e.target.value)}
+                  placeholder={'https://www.instagram.com/p/ABC123/\nhttps://www.instagram.com/tttopost/p/DEF456/\nhttps://www.instagram.com/reel/GHI789/'}
+                  rows={8}
+                  autoFocus
+                />
+                {(() => {
+                  const valid = parseBatchUrls(batchUrls)
+                  const total = batchUrls.split('\n').filter(l => l.trim()).length
+                  const dupCount = valid.filter(url => {
+                    const normalized = url.split('?')[0].replace(/\/$/, '')
+                    return archives.some(a => a.igUrl && a.igUrl.split('?')[0].replace(/\/$/, '') === normalized)
+                  }).length
+                  return (
+                    <div className="batch-url-info">
+                      <span>{valid.length} 筆有效連結{total > valid.length ? `（${total - valid.length} 筆無效已忽略）` : ''}</span>
+                      {dupCount > 0 && <span className="batch-dup-warn">其中 {dupCount} 筆已備份過，將自動跳過</span>}
+                    </div>
+                  )
+                })()}
+                <div className="modal-footer">
+                  <button className="cancel-btn" onClick={() => setShowBatchModal(false)}>取消</button>
+                  <button
+                    className="save-btn"
+                    onClick={handleBatchCreate}
+                    disabled={parseBatchUrls(batchUrls).length === 0}
+                  >
+                    <Upload size={16} /> 開始備份
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {(batchCreating || batchResults.length > 0) && (
+              <div className="batch-create-progress">
+                <div className="batch-progress-bar-container">
+                  <div
+                    className="batch-progress-bar-fill"
+                    style={{ width: `${batchCreateProgress.total > 0 ? (batchCreateProgress.current / batchCreateProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <div className="batch-progress-text">
+                  {batchCreating
+                    ? `處理中 ${batchCreateProgress.current}/${batchCreateProgress.total}`
+                    : `完成 ${batchResults.filter(r => r.status === 'success').length}/${batchResults.length}`
+                  }
+                </div>
+
+                <div className="batch-results-list">
+                  {batchResults.map((r, i) => (
+                    <div key={i} className={`batch-result-item batch-result-${r.status}`}>
+                      <span className="batch-result-icon">
+                        {r.status === 'success' && '✓'}
+                        {r.status === 'error' && '✗'}
+                        {r.status === 'processing' && '⏳'}
+                        {r.status === 'pending' && '·'}
+                      </span>
+                      <span className="batch-result-url">{r.url.replace(/https?:\/\/(www\.)?instagram\.com\//, '')}</span>
+                      {r.status === 'success' && <span className="batch-result-meta">{r.member} · {r.type}</span>}
+                      {r.status === 'error' && <span className="batch-result-error">{r.error}</span>}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="modal-footer">
+                  {batchCreating ? (
+                    <button className="cancel-btn" onClick={cancelBatchCreate}>
+                      <X size={16} /> 取消
+                    </button>
+                  ) : (
+                    <>
+                      <button className="cancel-btn" onClick={() => {
+                        setShowBatchModal(false)
+                        setBatchResults([])
+                        setBatchUrls('')
+                      }}>
+                        關閉
+                      </button>
+                      <button className="save-btn" onClick={() => {
+                        setBatchResults([])
+                        setBatchUrls('')
+                      }}>
+                        繼續新增
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

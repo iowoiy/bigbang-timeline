@@ -1,6 +1,19 @@
 /* ========== 社群備份頁面 — 獨有樣式 ========== */
 /* 共用樣式見 ArchiveBase.css */
 
+/* 下拉選單 — 跟著按鈕位置 */
+.social-archive .filter-dropdown {
+  position: relative;
+}
+
+.social-archive .filter-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+}
+
 .social-archive {
   height: 100vh;
   display: flex;
@@ -757,4 +770,220 @@ body.light-mode .view-media-area {
     padding: 3px 8px;
     font-size: 10px;
   }
+}
+
+/* ========== Batch Create Modal ========== */
+.batch-create-modal {
+  max-width: 520px;
+}
+
+.batch-create-input {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.batch-create-input label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Script helper */
+.script-helper {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.script-helper-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.script-helper-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
+
+.script-helper-toggle span {
+  flex: 1;
+  text-align: left;
+}
+
+.script-helper-content {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.script-helper-steps {
+  margin: 0 0 12px 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.script-helper-steps kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: var(--text-secondary);
+}
+
+.copy-script-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(var(--gold-accent-rgb), 0.12);
+  border: 1px solid rgba(var(--gold-accent-rgb), 0.25);
+  color: var(--color-gold);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.copy-script-btn:hover {
+  background: rgba(var(--gold-accent-rgb), 0.2);
+  border-color: rgba(var(--gold-accent-rgb), 0.4);
+}
+
+.batch-urls-textarea {
+  width: 100%;
+  min-height: 160px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: monospace;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.batch-urls-textarea:focus {
+  outline: none;
+  border-color: rgba(var(--gold-accent-rgb), 0.5);
+}
+
+.batch-urls-textarea::placeholder {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.batch-url-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.batch-dup-warn {
+  color: var(--color-orange, #f0a030);
+}
+
+.batch-create-progress {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.batch-progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.batch-progress-bar-fill {
+  height: 100%;
+  background: var(--color-gold);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.batch-progress-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.batch-results-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.batch-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.batch-result-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.batch-result-success .batch-result-icon { color: #4caf50; }
+.batch-result-error .batch-result-icon { color: #e63946; }
+.batch-result-processing .batch-result-icon { color: var(--color-gold); }
+.batch-result-pending .batch-result-icon { color: var(--text-dim); }
+
+.batch-result-processing {
+  background: rgba(var(--gold-accent-rgb), 0.06);
+}
+
+.batch-result-url {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.batch-result-meta {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.batch-result-error .batch-result-url {
+  color: var(--text-dim);
+}
+
+.batch-result-error span:last-child {
+  color: #e63946;
+  font-size: 11px;
+  flex-shrink: 0;
 }

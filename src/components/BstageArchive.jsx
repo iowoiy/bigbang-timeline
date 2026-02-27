@@ -264,13 +264,16 @@ export default function BstageArchive({ isAdmin, onBack }) {
     showToast(`已新增 ${urls.length} 個媒體`)
   }
 
-  // 單張圖片背景上傳（同時上傳 ImgBB + Cloudinary 備份）
+  // 單張圖片背景上傳（同時上傳 Cloudinary 主要 + ImgBB 備用）
   async function uploadSingleImage(originalUrl, index) {
     try {
       const bsOpts = { context: 'bstage' }
-      const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadToImgBB(originalUrl, bsOpts),
-        uploadToCloudinary(originalUrl, bsOpts)
+      const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+        uploadToCloudinary(originalUrl, bsOpts),
+        uploadToImgBB(originalUrl, bsOpts).catch(err => {
+          console.warn('ImgBB 備份失敗:', err.message)
+          return null
+        })
       ])
 
       setFormData(prev => ({
@@ -278,14 +281,14 @@ export default function BstageArchive({ isAdmin, onBack }) {
         media: prev.media.map((m, i) =>
           i === index ? {
             ...m,
-            url: imgbbUrl,
-            backupUrl: cloudinaryUrl,
+            url: cloudinaryUrl,
+            backupUrl: imgbbUrl,
             uploading: false
           } : m
         )
       }))
 
-      if (cloudinaryUrl) {
+      if (imgbbUrl) {
         console.log(`✅ 圖片 ${index + 1} 雙重備份完成`)
       }
     } catch (err) {
@@ -310,7 +313,7 @@ export default function BstageArchive({ isAdmin, onBack }) {
     try {
       const newMedia = []
       for (const file of files) {
-        const url = await uploadToImgBB(file, { context: 'bstage' })
+        const url = await uploadToCloudinary(file, { context: 'bstage' })
         newMedia.push({ url, type: 'image' })
       }
       setFormData(prev => ({

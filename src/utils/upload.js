@@ -4,6 +4,9 @@ import config from '../config'
 
 // context: 'timeline' | 'social' | 'membership' | 'bstage'
 function getImgBBKey(context, member) {
+  if (context === 'social' && member === 'G-Dragon' && config.GD_IMGBB_API_KEY) {
+    return config.GD_IMGBB_API_KEY
+  }
   if (context === 'social' && member === 'T.O.P' && config.TOP_IMGBB_API_KEY) {
     return config.TOP_IMGBB_API_KEY
   }
@@ -17,6 +20,12 @@ function getImgBBKey(context, member) {
 }
 
 function getCloudinaryConf(context, member) {
+  if (context === 'social' && member === 'G-Dragon' && config.GD_CLOUDINARY_CLOUD_NAME) {
+    return {
+      cloudName: config.GD_CLOUDINARY_CLOUD_NAME,
+      preset: config.GD_CLOUDINARY_PRESET,
+    }
+  }
   if (context === 'social' && member === 'T.O.P' && config.TOP_CLOUDINARY_CLOUD_NAME) {
     return {
       cloudName: config.TOP_CLOUDINARY_CLOUD_NAME,
@@ -59,36 +68,34 @@ export async function uploadToImgBB(fileOrUrl, { context = 'timeline', member } 
   throw new Error(data?.error?.message || '上傳失敗')
 }
 
-// 上傳檔案或 URL 到 Cloudinary 作為備份
+// 上傳檔案或 URL 到 Cloudinary（主要圖床）
 export async function uploadToCloudinary(fileOrUrl, { context = 'timeline', member } = {}) {
   const { cloudName, preset } = getCloudinaryConf(context, member)
-  if (!cloudName || !preset) return null
+  if (!cloudName || !preset) throw new Error('Cloudinary 設定未完成')
 
-  try {
-    const formData = new FormData()
-    formData.append('file', fileOrUrl)
-    formData.append('upload_preset', preset)
+  const formData = new FormData()
+  formData.append('file', fileOrUrl)
+  formData.append('upload_preset', preset)
 
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      { method: 'POST', body: formData }
-    )
-    const data = await res.json()
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    { method: 'POST', body: formData }
+  )
+  const data = await res.json()
 
-    if (data.secure_url) return data.secure_url
-    throw new Error(data.error?.message || '上傳失敗')
-  } catch (err) {
-    console.warn('Cloudinary 備份失敗:', err.message)
-    return null
-  }
+  if (data.secure_url) return data.secure_url
+  throw new Error(data.error?.message || '上傳失敗')
 }
 
-// 同時上傳到 ImgBB + Cloudinary（雙重備份）
+// 同時上傳到 Cloudinary（主要）+ ImgBB（備用）
 export async function uploadWithBackup(fileOrUrl, { context = 'timeline', member } = {}) {
   const opts = { context, member }
-  const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-    uploadToImgBB(fileOrUrl, opts),
+  const [cloudinaryUrl, imgbbUrl] = await Promise.all([
     uploadToCloudinary(fileOrUrl, opts),
+    uploadToImgBB(fileOrUrl, opts).catch(err => {
+      console.warn('ImgBB 備份失敗:', err.message)
+      return null
+    }),
   ])
-  return { url: imgbbUrl, backupUrl: cloudinaryUrl }
+  return { url: cloudinaryUrl, backupUrl: imgbbUrl }
 }

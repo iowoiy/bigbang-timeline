@@ -23,11 +23,12 @@ const DOC_IDS = [
 ];
 
 function extractShortcode(url) {
+  // 支援 instagram.com/p/XXX 和 instagram.com/username/p/XXX 兩種格式
   const patterns = [
-    /instagram\.com\/p\/([a-zA-Z0-9_-]+)/,
-    /instagram\.com\/reel\/([a-zA-Z0-9_-]+)/,
-    /instagram\.com\/reels\/([a-zA-Z0-9_-]+)/,
-    /instagram\.com\/tv\/([a-zA-Z0-9_-]+)/,
+    /instagram\.com\/(?:[^\/]+\/)?p\/([a-zA-Z0-9_-]+)/,
+    /instagram\.com\/(?:[^\/]+\/)?reel\/([a-zA-Z0-9_-]+)/,
+    /instagram\.com\/(?:[^\/]+\/)?reels\/([a-zA-Z0-9_-]+)/,
+    /instagram\.com\/(?:[^\/]+\/)?tv\/([a-zA-Z0-9_-]+)/,
   ];
   for (const pattern of patterns) {
     const match = url.match(pattern);

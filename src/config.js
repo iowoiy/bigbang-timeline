@@ -44,6 +44,11 @@ const config = {
   TOP_IMGBB_API_KEY: '0b1496efe89ea09d0615c315051728a5',
   TOP_CLOUDINARY_CLOUD_NAME: 'dgkgt9w1q',
   TOP_CLOUDINARY_PRESET: 'teamtttop',
+
+  // G-Dragon 社群備份專用（資料量龐大，獨立存放）
+  GD_IMGBB_API_KEY: 'eb1e9a7022e63ecc91b8710e5de5bf9c',
+  GD_CLOUDINARY_CLOUD_NAME: 'de49vywlo',
+  GD_CLOUDINARY_PRESET: 'gdragon-ig',
 }
 
 export default config

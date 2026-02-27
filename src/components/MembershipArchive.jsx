@@ -351,7 +351,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       }
 
       try {
-        // 上傳圖片（ImgBB + Cloudinary 雙備份），影片保留原始 URL
+        // 上傳圖片（Cloudinary 主要 + ImgBB 備用），影片保留原始 URL
         const uploadedMedia = []
         for (const img of item.images) {
           // 影片不上傳圖床，直接保留原始 URL
@@ -361,14 +361,17 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           }
           try {
             const mbOpts = { context: 'membership' }
-            const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-              uploadToImgBB(img.originalUrl, mbOpts),
-              uploadToCloudinary(img.originalUrl, mbOpts)
+            const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+              uploadToCloudinary(img.originalUrl, mbOpts),
+              uploadToImgBB(img.originalUrl, mbOpts).catch(err => {
+                console.warn('ImgBB 備份失敗:', err.message)
+                return null
+              })
             ])
             uploadedMedia.push({
-              url: imgbbUrl,
+              url: cloudinaryUrl,
               type: img.type,
-              ...(cloudinaryUrl && { backupUrl: cloudinaryUrl }),
+              ...(imgbbUrl && { backupUrl: imgbbUrl }),
             })
           } catch (uploadErr) {
             console.warn('圖片上傳失敗，使用原始 URL:', uploadErr)
@@ -669,13 +672,16 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     showToast(`已新增 ${urls.length} 個媒體`)
   }
 
-  // 單張圖片背景上傳（同時上傳 ImgBB + Cloudinary 備份）
+  // 單張圖片背景上傳（同時上傳 Cloudinary 主要 + ImgBB 備用）
   async function uploadSingleImage(originalUrl, index) {
     try {
       const mbOpts = { context: 'membership' }
-      const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-        uploadToImgBB(originalUrl, mbOpts),
-        uploadToCloudinary(originalUrl, mbOpts)
+      const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+        uploadToCloudinary(originalUrl, mbOpts),
+        uploadToImgBB(originalUrl, mbOpts).catch(err => {
+          console.warn('ImgBB 備份失敗:', err.message)
+          return null
+        })
       ])
 
       setFormData(prev => ({
@@ -683,14 +689,14 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         media: prev.media.map((m, i) =>
           i === index ? {
             ...m,
-            url: imgbbUrl,
-            backupUrl: cloudinaryUrl,
+            url: cloudinaryUrl,
+            backupUrl: imgbbUrl,
             uploading: false
           } : m
         )
       }))
 
-      if (cloudinaryUrl) {
+      if (imgbbUrl) {
         console.log(`✅ 圖片 ${index + 1} 雙重備份完成`)
       }
     } catch (err) {
@@ -715,16 +721,19 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     try {
       const newMedia = []
       for (const file of files) {
-        // 圖片上傳到 ImgBB
+        // 圖片上傳到 Cloudinary（主要）+ ImgBB（備用）
         const mbOpts = { context: 'membership' }
-        const [imgbbUrl, cloudinaryUrl] = await Promise.all([
-          uploadToImgBB(file, mbOpts),
-          uploadToCloudinary(file, mbOpts)
+        const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+          uploadToCloudinary(file, mbOpts),
+          uploadToImgBB(file, mbOpts).catch(err => {
+            console.warn('ImgBB 備份失敗:', err.message)
+            return null
+          })
         ])
         newMedia.push({
-          url: imgbbUrl,
+          url: cloudinaryUrl,
           type: 'image',
-          ...(cloudinaryUrl && { backupUrl: cloudinaryUrl }),
+          ...(imgbbUrl && { backupUrl: imgbbUrl }),
         })
       }
       setFormData(prev => ({
