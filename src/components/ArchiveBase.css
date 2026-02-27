@@ -1509,9 +1509,8 @@ body.light-mode .youtube-input input {
   }
 
   .archive-filters .search-box {
-    min-width: 100%;
-    order: 3;
-    margin-top: 6px;
+    flex: 1;
+    min-width: 120px;
   }
 
   .archive-content.grid {
