@@ -1673,14 +1673,16 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
         {/* 第二排：功能按鈕 + 搜尋 + 檢視 */}
         <div className="filter-row">
-          <button
-            className={`filter-video-btn ${filterHasVideo ? 'active' : ''}`}
-            onClick={() => setFilterHasVideo(!filterHasVideo)}
-            title="只顯示含影片的貼文"
-          >
-            <Film size={16} />
-            <span>影片</span>
-          </button>
+          {isAdmin && (
+            <button
+              className={`filter-video-btn ${filterHasVideo ? 'active' : ''}`}
+              onClick={() => setFilterHasVideo(!filterHasVideo)}
+              title="只顯示含影片的貼文"
+            >
+              <Film size={16} />
+              <span>影片</span>
+            </button>
+          )}
 
           {isAdmin && (
             <button
