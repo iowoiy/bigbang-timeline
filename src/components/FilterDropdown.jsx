@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 /**
  * 通用篩選下拉選單
@@ -27,6 +27,7 @@ export default function FilterDropdown({
   className = '',
 }) {
   const [isMobile, setIsMobile] = useState(false)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -40,6 +41,18 @@ export default function FilterDropdown({
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // 點擊外部關閉下拉
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        onToggle()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen, onToggle])
 
   // 取得目前選項的顯示文字
   const currentOption = options.find(opt => opt.value === value)
@@ -65,7 +78,7 @@ export default function FilterDropdown({
 
   // 桌面版：自訂下拉選單
   return (
-    <div className={`filter-dropdown ${className}`}>
+    <div ref={dropdownRef} className={`filter-dropdown ${className}`}>
       <button
         className={`filter-btn dropdown-toggle ${value !== allValue ? 'active' : ''}`}
         onClick={onToggle}

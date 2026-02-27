@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowUpDown } from 'lucide-react'
 import { CATEGORIES } from '../data/categories'
 import MemberFilterDropdown from './MemberFilterDropdown'
@@ -14,6 +14,7 @@ export default function TimelineFilters({
   const [yearNavOpen, setYearNavOpen] = useState(false)
   const [memberNavOpen, setMemberNavOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const yearDropdownRef = useRef(null)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -27,6 +28,18 @@ export default function TimelineFilters({
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // 點擊外部關閉年份下拉
+  useEffect(() => {
+    if (!yearNavOpen) return
+    const handleClickOutside = (e) => {
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target)) {
+        setYearNavOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [yearNavOpen])
 
   return (
     <div className="filters">
@@ -66,7 +79,7 @@ export default function TimelineFilters({
             ))}
           </select>
         ) : (
-          <div className="filter-dropdown">
+          <div ref={yearDropdownRef} className="filter-dropdown">
             <button
               className="filter-btn dropdown-toggle"
               onClick={() => { setYearNavOpen(!yearNavOpen); setMemberNavOpen(false) }}

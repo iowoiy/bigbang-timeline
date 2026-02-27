@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { MEMBERS } from '../utils/members'
 
 /**
@@ -12,6 +12,7 @@ export default function MemberFilterDropdown({
   onToggle,
 }) {
   const [isMobile, setIsMobile] = useState(false)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     // 偵測觸控裝置
@@ -26,6 +27,18 @@ export default function MemberFilterDropdown({
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // 點擊外部關閉下拉
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        onToggle()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen, onToggle])
 
   const handleToggleMember = (memberName) => {
     if (selectedMembers.includes(memberName)) {
@@ -67,7 +80,7 @@ export default function MemberFilterDropdown({
 
   // 桌面版：自訂下拉選單
   return (
-    <div className="filter-dropdown">
+    <div ref={dropdownRef} className="filter-dropdown">
       <button
         className={`filter-btn dropdown-toggle ${selectedMembers.length > 0 ? 'active' : ''}`}
         onClick={onToggle}
