@@ -1637,16 +1637,14 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
 
       {/* Filters */}
       <div className="archive-filters">
+        {/* 第一排：篩選下拉 */}
         <div className="filter-row">
-          {/* 成員篩選（多選） */}
           <MemberFilterDropdown
             selectedMembers={filterMembers}
             onChange={setFilterMembers}
             isOpen={memberDropdownOpen}
             onToggle={() => { setMemberDropdownOpen(!memberDropdownOpen); setYearDropdownOpen(false); setTypeDropdownOpen(false) }}
           />
-
-          {/* 類型篩選 */}
           <FilterDropdown
             label="類型"
             options={POST_TYPES.map(t => ({ value: t.id, label: `${t.icon} ${t.label}` }))}
@@ -1655,8 +1653,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             isOpen={typeDropdownOpen}
             onToggle={() => { setTypeDropdownOpen(!typeDropdownOpen); setMemberDropdownOpen(false); setYearDropdownOpen(false) }}
           />
-
-          {/* 年份篩選 */}
           <FilterDropdown
             label="年份"
             options={availableYears.map(y => ({ value: y, label: y }))}
@@ -1666,8 +1662,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             onToggle={() => { setYearDropdownOpen(!yearDropdownOpen); setMemberDropdownOpen(false); setTypeDropdownOpen(false) }}
             className="year-filter"
           />
-
-          {/* 排序切換 */}
           <button
             className="year-sort-btn"
             onClick={() => setSortDesc(!sortDesc)}
@@ -1675,8 +1669,10 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           >
             <ArrowUpDown size={12} />
           </button>
+        </div>
 
-          {/* 含影片篩選 */}
+        {/* 第二排：功能按鈕 + 搜尋 + 檢視 */}
+        <div className="filter-row">
           <button
             className={`filter-video-btn ${filterHasVideo ? 'active' : ''}`}
             onClick={() => setFilterHasVideo(!filterHasVideo)}
@@ -1686,13 +1682,11 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             <span>影片</span>
           </button>
 
-          {/* 壞圖篩選（僅管理員可見） */}
           {isAdmin && (
             <button
               className={`filter-broken-btn ${filterBrokenImages ? 'active' : ''}`}
               onClick={() => {
                 if (Object.keys(brokenImageMap).length === 0 && !checkingBroken) {
-                  // 還沒檢查過，先執行檢查
                   checkAllBrokenImages()
                 }
                 setFilterBrokenImages(!filterBrokenImages)
@@ -1714,7 +1708,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             </button>
           )}
 
-          {/* 搜尋 */}
           <div className="search-box">
             <Search size={16} />
             <input
@@ -1725,7 +1718,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             />
           </div>
 
-          {/* 檢視模式 */}
           <div className="view-toggle">
             <button
               className={viewMode === 'grid' ? 'active' : ''}
@@ -1741,7 +1733,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
             </button>
           </div>
 
-          {/* 勾選模式（僅管理員可見） */}
           {isAdmin && (
             <button
               className={`select-mode-btn ${selectMode ? 'active' : ''}`}

@@ -55,7 +55,7 @@ export default function MemberFilterDropdown({
         <option value="" disabled>
           {selectedMembers.length === 0 ? '成員' : `成員(${selectedMembers.length})`}
         </option>
-        <option value="all">全部（清除選擇）</option>
+        <option value="all">全部</option>
         {filteredMembers.map(m => (
           <option key={m.name} value={m.name}>
             {selectedMembers.includes(m.name) ? `✓ ${m.name}` : m.name}

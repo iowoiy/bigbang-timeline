@@ -90,6 +90,9 @@
   position: sticky;
   top: 60px;
   z-index: 99;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .archive-filters .filter-row {
@@ -187,35 +190,6 @@
   font-size: 11px;
   color: var(--text-dim);
   letter-spacing: 0.05em;
-}
-
-/* 下拉選單 — 跟著按鈕位置 */
-.archive-filters .filter-dropdown {
-  position: relative;
-}
-
-.archive-filters .filter-dropdown-list {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 6px;
-}
-
-/* 年份下拉 — 橫向排列 */
-.archive-filters .year-dropdown-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-width: 200px;
-  max-width: 320px;
-  padding: 10px;
-}
-
-.archive-filters .year-dropdown-list .filter-dropdown-item {
-  flex: 0 0 auto;
-  min-width: 56px;
-  text-align: center;
 }
 
 /* ========== Content Grid ========== */
