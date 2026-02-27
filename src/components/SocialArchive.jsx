@@ -6,6 +6,7 @@ import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
 import { MEMBERS, getMemberColor, genId } from '../utils/members'
 import MemberFilterDropdown from './MemberFilterDropdown'
+import FilterDropdown from './FilterDropdown'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary, uploadWithBackup } from '../utils/upload'
@@ -1646,62 +1647,25 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           />
 
           {/* 類型篩選 */}
-          <div className="filter-dropdown">
-            <button
-              className={`filter-btn dropdown-toggle ${filterType !== 'all' ? 'active' : ''}`}
-              onClick={() => { setTypeDropdownOpen(!typeDropdownOpen); setMemberDropdownOpen(false); setYearDropdownOpen(false) }}
-            >
-              {filterType === 'all' ? '類型' : POST_TYPES.find(t => t.id === filterType)?.label || filterType} <span className="dropdown-arrow">{typeDropdownOpen ? '▲' : '▼'}</span>
-            </button>
-            {typeDropdownOpen && (
-              <div className="filter-dropdown-list">
-                <button
-                  className={`filter-dropdown-item ${filterType === 'all' ? 'active' : ''}`}
-                  onClick={() => { setFilterType('all'); setTypeDropdownOpen(false) }}
-                >
-                  全部
-                </button>
-                {POST_TYPES.map(t => (
-                  <button
-                    key={t.id}
-                    className={`filter-dropdown-item ${filterType === t.id ? 'active' : ''}`}
-                    onClick={() => { setFilterType(t.id); setTypeDropdownOpen(false) }}
-                  >
-                    {t.icon} {t.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <FilterDropdown
+            label="類型"
+            options={POST_TYPES.map(t => ({ value: t.id, label: `${t.icon} ${t.label}` }))}
+            value={filterType}
+            onChange={(val) => { setFilterType(val); setTypeDropdownOpen(false) }}
+            isOpen={typeDropdownOpen}
+            onToggle={() => { setTypeDropdownOpen(!typeDropdownOpen); setMemberDropdownOpen(false); setYearDropdownOpen(false) }}
+          />
 
           {/* 年份篩選 */}
-          <div className="filter-dropdown year-filter">
-            <button
-              className="filter-btn dropdown-toggle"
-              onClick={() => { setYearDropdownOpen(!yearDropdownOpen); setMemberDropdownOpen(false); setTypeDropdownOpen(false) }}
-            >
-              {filterYear === 'all' ? '年份' : filterYear} <span className="dropdown-arrow">{yearDropdownOpen ? '▲' : '▼'}</span>
-            </button>
-            {yearDropdownOpen && (
-              <div className="filter-dropdown-list year-dropdown-list">
-                <button
-                  className={`filter-dropdown-item ${filterYear === 'all' ? 'active' : ''}`}
-                  onClick={() => { setFilterYear('all'); setYearDropdownOpen(false) }}
-                >
-                  全部
-                </button>
-                {availableYears.map(year => (
-                  <button
-                    key={year}
-                    className={`filter-dropdown-item ${filterYear === year ? 'active' : ''}`}
-                    onClick={() => { setFilterYear(year); setYearDropdownOpen(false) }}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <FilterDropdown
+            label="年份"
+            options={availableYears.map(y => ({ value: y, label: y }))}
+            value={filterYear}
+            onChange={(val) => { setFilterYear(val); setYearDropdownOpen(false) }}
+            isOpen={yearDropdownOpen}
+            onToggle={() => { setYearDropdownOpen(!yearDropdownOpen); setMemberDropdownOpen(false); setTypeDropdownOpen(false) }}
+            className="year-filter"
+          />
 
           {/* 排序切換 */}
           <button

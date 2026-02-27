@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowUpDown } from 'lucide-react'
 import { CATEGORIES } from '../data/categories'
 import MemberFilterDropdown from './MemberFilterDropdown'
@@ -13,6 +13,20 @@ export default function TimelineFilters({
 }) {
   const [yearNavOpen, setYearNavOpen] = useState(false)
   const [memberNavOpen, setMemberNavOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(
+        'ontouchstart' in window ||
+        window.matchMedia('(pointer: coarse)').matches ||
+        window.innerWidth < 768
+      )
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   return (
     <div className="filters">
@@ -35,32 +49,50 @@ export default function TimelineFilters({
       {/* 第二排：年份 + 成員 */}
       <div className="filter-row">
         {/* 年份篩選 */}
-        <div className="filter-dropdown">
-          <button
-            className="filter-btn dropdown-toggle"
-            onClick={() => { setYearNavOpen(!yearNavOpen); setMemberNavOpen(false) }}
+        {isMobile ? (
+          <select
+            className="filter-select"
+            value={selectedYear || ''}
+            onChange={(e) => {
+              const year = e.target.value
+              setSelectedYear(year)
+              const el = document.getElementById(`year-${year}`)
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
           >
-            年份 <span className="dropdown-arrow">{yearNavOpen ? '▲' : '▼'}</span>
-          </button>
-          {yearNavOpen && (
-            <div className="filter-dropdown-list">
-              {years.map(year => (
-                <button
-                  key={year}
-                  className={`filter-dropdown-item ${selectedYear === year ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedYear(year)
-                    const el = document.getElementById(`year-${year}`)
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    setYearNavOpen(false)
-                  }}
-                >
-                  {year}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            <option value="" disabled>年份</option>
+            {years.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        ) : (
+          <div className="filter-dropdown">
+            <button
+              className="filter-btn dropdown-toggle"
+              onClick={() => { setYearNavOpen(!yearNavOpen); setMemberNavOpen(false) }}
+            >
+              年份 <span className="dropdown-arrow">{yearNavOpen ? '▲' : '▼'}</span>
+            </button>
+            {yearNavOpen && (
+              <div className="filter-dropdown-list">
+                {years.map(year => (
+                  <button
+                    key={year}
+                    className={`filter-dropdown-item ${selectedYear === year ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedYear(year)
+                      const el = document.getElementById(`year-${year}`)
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      setYearNavOpen(false)
+                    }}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 年份排序切換 */}
         <button
