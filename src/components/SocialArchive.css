@@ -525,6 +525,26 @@
   box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
 }
 
+.batch-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #E63946 0%, #C62828 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.batch-delete-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+}
+
 .social-archive:has(.batch-action-bar) {
   padding-bottom: 80px;
 }
@@ -541,7 +561,8 @@
   }
 
   .batch-cancel-btn,
-  .batch-sync-btn {
+  .batch-sync-btn,
+  .batch-delete-btn {
     flex: 1;
     justify-content: center;
   }

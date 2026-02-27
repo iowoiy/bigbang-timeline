@@ -1112,6 +1112,48 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     }
   }
 
+  // 批次刪除
+  async function handleBatchDelete() {
+    const count = selectedIds.length
+    const confirmDelete = await showConfirm({
+      title: '🗑️ 批次刪除確認',
+      type: 'danger',
+      confirmText: `刪除 ${count} 筆`,
+      cancelText: '取消',
+      content: (
+        <div className="confirm-content">
+          <p>確定要刪除選取的 <strong>{count}</strong> 筆備份嗎？</p>
+          <p className="confirm-warning">此操作無法復原</p>
+        </div>
+      )
+    })
+    if (!confirmDelete) return
+
+    let successCount = 0
+    let failCount = 0
+
+    for (const id of selectedIds) {
+      try {
+        await socialApi.delete(id)
+        successCount++
+      } catch (err) {
+        console.error(`刪除 ${id} 失敗`, err)
+        failCount++
+      }
+    }
+
+    // 更新本地狀態
+    setArchives(prev => prev.filter(a => !selectedIds.includes(a.id)))
+    setSelectedIds([])
+    setSelectMode(false)
+
+    if (failCount > 0) {
+      showToast(`已刪除 ${successCount} 筆，${failCount} 筆失敗`, 'error')
+    } else {
+      showToast(`已刪除 ${successCount} 筆`)
+    }
+  }
+
   // ===== 勾選模式 =====
 
   // 切換單筆選取
@@ -1704,7 +1746,6 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               ) : (
                 <>
                   <ImageOff size={16} />
-                  <span>壞圖{Object.keys(brokenImageMap).length > 0 ? ` (${Object.keys(brokenImageMap).length})` : ''}</span>
                 </>
               )}
             </button>
@@ -2442,13 +2483,22 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                 取消同步 ({batchProgress.current}/{batchProgress.total})
               </button>
             ) : (
-              <button
-                className="batch-sync-btn"
-                onClick={handleBatchSync}
-              >
-                <RefreshCw size={16} />
-                同步抓取
-              </button>
+              <>
+                <button
+                  className="batch-sync-btn"
+                  onClick={handleBatchSync}
+                >
+                  <RefreshCw size={16} />
+                  同步抓取
+                </button>
+                <button
+                  className="batch-delete-btn"
+                  onClick={handleBatchDelete}
+                >
+                  <Trash2 size={16} />
+                  刪除
+                </button>
+              </>
             )}
           </div>
         </div>
