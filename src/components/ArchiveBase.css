@@ -202,6 +202,22 @@
   margin-top: 6px;
 }
 
+/* 年份下拉 — 橫向排列 */
+.archive-filters .year-dropdown-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 200px;
+  max-width: 320px;
+  padding: 10px;
+}
+
+.archive-filters .year-dropdown-list .filter-dropdown-item {
+  flex: 0 0 auto;
+  min-width: 56px;
+  text-align: center;
+}
+
 /* ========== Content Grid ========== */
 .archive-content {
   max-width: 900px;

@@ -1675,7 +1675,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           </div>
 
           {/* 年份篩選 */}
-          <div className="filter-dropdown">
+          <div className="filter-dropdown year-filter">
             <button
               className="filter-btn dropdown-toggle"
               onClick={() => { setYearDropdownOpen(!yearDropdownOpen); setMemberDropdownOpen(false); setTypeDropdownOpen(false) }}
@@ -1683,7 +1683,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               {filterYear === 'all' ? '年份' : filterYear} <span className="dropdown-arrow">{yearDropdownOpen ? '▲' : '▼'}</span>
             </button>
             {yearDropdownOpen && (
-              <div className="filter-dropdown-list">
+              <div className="filter-dropdown-list year-dropdown-list">
                 <button
                   className={`filter-dropdown-item ${filterYear === 'all' ? 'active' : ''}`}
                   onClick={() => { setFilterYear('all'); setYearDropdownOpen(false) }}
