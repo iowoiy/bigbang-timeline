@@ -1,12 +1,9 @@
+import { useState, useEffect } from 'react'
 import { MEMBERS } from '../utils/members'
 
 /**
  * 成員篩選下拉選單（多選）
- * @param {Object} props
- * @param {string[]} props.selectedMembers - 已選成員名稱陣列
- * @param {(members: string[]) => void} props.onChange - 選擇變更回調
- * @param {boolean} props.isOpen - 下拉選單是否開啟
- * @param {() => void} props.onToggle - 切換開啟/關閉
+ * 手機版使用原生下拉，桌面版使用自訂下拉
  */
 export default function MemberFilterDropdown({
   selectedMembers,
@@ -14,9 +11,21 @@ export default function MemberFilterDropdown({
   isOpen,
   onToggle,
 }) {
-  const handleSelectAll = () => {
-    onChange([])
-  }
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    // 偵測觸控裝置
+    const checkMobile = () => {
+      setIsMobile(
+        'ontouchstart' in window ||
+        window.matchMedia('(pointer: coarse)').matches ||
+        window.innerWidth < 768
+      )
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleToggleMember = (memberName) => {
     if (selectedMembers.includes(memberName)) {
@@ -26,6 +35,37 @@ export default function MemberFilterDropdown({
     }
   }
 
+  const filteredMembers = MEMBERS.filter(m => m.name !== '全員')
+
+  // 手機版：原生 select（選擇後 toggle 該成員）
+  if (isMobile) {
+    return (
+      <select
+        className="filter-select"
+        value=""
+        onChange={(e) => {
+          const val = e.target.value
+          if (val === 'all') {
+            onChange([])
+          } else if (val) {
+            handleToggleMember(val)
+          }
+        }}
+      >
+        <option value="" disabled>
+          {selectedMembers.length === 0 ? '成員' : `成員(${selectedMembers.length})`}
+        </option>
+        <option value="all">全部（清除選擇）</option>
+        {filteredMembers.map(m => (
+          <option key={m.name} value={m.name}>
+            {selectedMembers.includes(m.name) ? `✓ ${m.name}` : m.name}
+          </option>
+        ))}
+      </select>
+    )
+  }
+
+  // 桌面版：自訂下拉選單
   return (
     <div className="filter-dropdown">
       <button
@@ -39,11 +79,11 @@ export default function MemberFilterDropdown({
         <div className="filter-dropdown-list">
           <button
             className={`filter-dropdown-item ${selectedMembers.length === 0 ? 'active' : ''}`}
-            onClick={handleSelectAll}
+            onClick={() => onChange([])}
           >
             全部
           </button>
-          {MEMBERS.filter(m => m.name !== '全員').map(m => (
+          {filteredMembers.map(m => (
             <button
               key={m.name}
               className={`filter-dropdown-item ${selectedMembers.includes(m.name) ? 'active' : ''}`}
