@@ -1689,6 +1689,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           />
           <FilterDropdown
             label="類型"
+            allLabel="全部類型"
             options={POST_TYPES.map(t => ({ value: t.id, label: `${t.icon} ${t.label}` }))}
             value={filterType}
             onChange={(val) => { setFilterType(val); setTypeDropdownOpen(false) }}
@@ -1697,6 +1698,7 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           />
           <FilterDropdown
             label="年份"
+            allLabel="全部日期"
             options={availableYears.map(y => ({ value: y, label: y }))}
             value={filterYear}
             onChange={(val) => { setFilterYear(val); setYearDropdownOpen(false) }}
