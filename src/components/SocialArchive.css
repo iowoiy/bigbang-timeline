@@ -1,19 +1,6 @@
 /* ========== 社群備份頁面 — 獨有樣式 ========== */
 /* 共用樣式見 ArchiveBase.css */
 
-/* 下拉選單 — 跟著按鈕位置 */
-.social-archive .filter-dropdown {
-  position: relative;
-}
-
-.social-archive .filter-dropdown-list {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 6px;
-}
-
 .social-archive {
   height: 100vh;
   display: flex;

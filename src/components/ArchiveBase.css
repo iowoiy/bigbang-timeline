@@ -189,6 +189,19 @@
   letter-spacing: 0.05em;
 }
 
+/* 下拉選單 — 跟著按鈕位置 */
+.archive-filters .filter-dropdown {
+  position: relative;
+}
+
+.archive-filters .filter-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+}
+
 /* ========== Content Grid ========== */
 .archive-content {
   max-width: 900px;

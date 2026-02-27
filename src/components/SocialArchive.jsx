@@ -5,6 +5,7 @@ import NavMenu from './NavMenu'
 import config from '../config'
 import { AUTHORS, authorName, authorEmoji, authorColor, badgeStyle } from '../data/authors'
 import { MEMBERS, getMemberColor, genId } from '../utils/members'
+import MemberFilterDropdown from './MemberFilterDropdown'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary, uploadWithBackup } from '../utils/upload'
@@ -1619,9 +1620,11 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           <h1>📱 社群備份</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button className="add-btn" onClick={() => setShowBatchModal(true)} title="批次備份">
-            <Upload size={20} />
-          </button>
+          {isAdmin && (
+            <button className="add-btn" onClick={() => setShowBatchModal(true)} title="批次備份">
+              <Upload size={20} />
+            </button>
+          )}
           <button className="add-btn" onClick={openAddModal} title="新增備份">
             <Plus size={20} />
           </button>
@@ -1635,40 +1638,12 @@ function SocialArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       <div className="archive-filters">
         <div className="filter-row">
           {/* 成員篩選（多選） */}
-          <div className="filter-dropdown">
-            <button
-              className={`filter-btn dropdown-toggle ${filterMembers.length > 0 ? 'active' : ''}`}
-              onClick={() => { setMemberDropdownOpen(!memberDropdownOpen); setYearDropdownOpen(false); setTypeDropdownOpen(false) }}
-            >
-              {filterMembers.length === 0 ? '成員' : `成員(${filterMembers.length})`} <span className="dropdown-arrow">{memberDropdownOpen ? '▲' : '▼'}</span>
-            </button>
-            {memberDropdownOpen && (
-              <div className="filter-dropdown-list">
-                <button
-                  className={`filter-dropdown-item ${filterMembers.length === 0 ? 'active' : ''}`}
-                  onClick={() => setFilterMembers([])}
-                >
-                  全部
-                </button>
-                {MEMBERS.filter(m => m.name !== '全員').map(m => (
-                  <button
-                    key={m.name}
-                    className={`filter-dropdown-item ${filterMembers.includes(m.name) ? 'active' : ''}`}
-                    style={{ color: filterMembers.includes(m.name) ? m.color : undefined }}
-                    onClick={() => {
-                      if (filterMembers.includes(m.name)) {
-                        setFilterMembers(filterMembers.filter(x => x !== m.name))
-                      } else {
-                        setFilterMembers([...filterMembers, m.name])
-                      }
-                    }}
-                  >
-                    {m.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <MemberFilterDropdown
+            selectedMembers={filterMembers}
+            onChange={setFilterMembers}
+            isOpen={memberDropdownOpen}
+            onToggle={() => { setMemberDropdownOpen(!memberDropdownOpen); setYearDropdownOpen(false); setTypeDropdownOpen(false) }}
+          />
 
           {/* 類型篩選 */}
           <div className="filter-dropdown">

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowUpDown } from 'lucide-react'
 import { CATEGORIES } from '../data/categories'
-import { MEMBERS } from '../utils/members'
+import MemberFilterDropdown from './MemberFilterDropdown'
 
 export default function TimelineFilters({
   filter, setFilter,
@@ -72,43 +72,12 @@ export default function TimelineFilters({
         </button>
 
         {/* 成員篩選（多選） */}
-        <div className="filter-dropdown">
-          <button
-            className={`filter-btn dropdown-toggle member-toggle ${memberFilter.length > 0 ? 'active' : ''}`}
-            onClick={() => { setMemberNavOpen(!memberNavOpen); setYearNavOpen(false) }}
-          >
-            {memberFilter.length === 0 ? '成員' : `成員(${memberFilter.length})`} <span className="dropdown-arrow">{memberNavOpen ? '▲' : '▼'}</span>
-          </button>
-          {memberNavOpen && (
-            <div className="filter-dropdown-list">
-              <button
-                className={`filter-dropdown-item ${memberFilter.length === 0 ? 'active' : ''}`}
-                onClick={() => setMemberFilter([])}
-              >
-                全部
-              </button>
-              {MEMBERS.filter(m => m.name !== '全員').map(m => (
-                <button
-                  key={m.name}
-                  className={`filter-dropdown-item ${memberFilter.includes(m.name) ? 'active' : ''}`}
-                  style={{
-                    color: memberFilter.includes(m.name) ? m.color : undefined,
-                    borderColor: memberFilter.includes(m.name) ? m.color : undefined
-                  }}
-                  onClick={() => {
-                    if (memberFilter.includes(m.name)) {
-                      setMemberFilter(memberFilter.filter(x => x !== m.name))
-                    } else {
-                      setMemberFilter([...memberFilter, m.name])
-                    }
-                  }}
-                >
-                  {m.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <MemberFilterDropdown
+          selectedMembers={memberFilter}
+          onChange={setMemberFilter}
+          isOpen={memberNavOpen}
+          onToggle={() => { setMemberNavOpen(!memberNavOpen); setYearNavOpen(false) }}
+        />
       </div>
     </div>
   )

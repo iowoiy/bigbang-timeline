@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Plus, X, Image, ChevronDown, Trash2, ExternalLink, Calendar, Save, Check, AlertCircle, Link2, Upload, Search, Grid, List, Play, ChevronLeft, ChevronRight, Lock, Download } from 'lucide-react'
 import NavMenu from './NavMenu'
 import { MEMBERS_NO_VICTORY as MEMBERS, MEMBER_ALIASES, getMemberColor, genId } from '../utils/members'
+import MemberFilterDropdown from './MemberFilterDropdown'
 import { getThumbUrl, getViewUrl, isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from '../utils/media'
 import { formatDate, formatDateTime } from '../utils/date'
 import { uploadToImgBB, uploadToCloudinary } from '../utils/upload'
@@ -88,7 +89,8 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [toast, setToast] = useState(null)
 
   // 篩選
-  const [filterMember, setFilterMember] = useState('all')
+  const [filterMembers, setFilterMembers] = useState([]) // 多選成員
+  const [memberDropdownOpen, setMemberDropdownOpen] = useState(false)
   const [filterType, setFilterType] = useState('all') // all | video | paid
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState('grid') // grid | list
@@ -514,14 +516,18 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const filteredArchives = useMemo(() => {
     return archives
       .filter(item => {
-        if (filterMember !== 'all' && item.member !== filterMember && !MEMBER_ALIASES[filterMember]?.includes(item.member)) return false
+        // 多選成員篩選
+        if (filterMembers.length > 0) {
+          const matchMember = filterMembers.some(m => item.member === m || MEMBER_ALIASES[m]?.includes(item.member))
+          if (!matchMember) return false
+        }
         if (filterType === 'video' && !item.notes?.includes('[影片]')) return false
         if (filterType === 'paid' && !item.paid) return false
         if (searchText && !item.caption?.toLowerCase().includes(searchText.toLowerCase())) return false
         return true
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-  }, [archives, filterMember, filterType, searchText])
+  }, [archives, filterMembers, filterType, searchText])
 
   // 測量容器寬度，計算每行幾列
   useEffect(() => {
@@ -904,17 +910,13 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
       {/* Filters */}
       <div className="archive-filters">
         <div className="filter-row">
-          {/* 成員篩選 */}
-          <select
-            value={filterMember}
-            onChange={e => setFilterMember(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">所有成員</option>
-            {MEMBERS.map(m => (
-              <option key={m.name} value={m.name}>{m.name}</option>
-            ))}
-          </select>
+          {/* 成員篩選（多選） */}
+          <MemberFilterDropdown
+            selectedMembers={filterMembers}
+            onChange={setFilterMembers}
+            isOpen={memberDropdownOpen}
+            onToggle={() => setMemberDropdownOpen(!memberDropdownOpen)}
+          />
 
           {/* 類型篩選 */}
           <select
