@@ -372,12 +372,11 @@ export default function OnThisDay({ currentPage, setCurrentPage, isAdmin }) {
       {viewingItem && (
         <div className="otd-view-overlay" onClick={() => setViewingItem(null)}>
           <div className="otd-view-modal" onClick={e => e.stopPropagation()}>
-            <button className="otd-view-close" onClick={() => setViewingItem(null)}>
-              <X size={24} />
-            </button>
-
             {/* 媒體區域 */}
             <div className="otd-view-media">
+              <button className="otd-view-close" onClick={() => setViewingItem(null)}>
+                <X size={20} />
+              </button>
               {viewingItem.media?.length > 0 ? (
                 <>
                   {(() => {
