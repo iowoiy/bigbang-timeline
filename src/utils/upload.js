@@ -10,6 +10,9 @@ function getImgBBKey(context, member) {
   if (context === 'social' && member === 'T.O.P' && config.TOP_IMGBB_API_KEY) {
     return config.TOP_IMGBB_API_KEY
   }
+  if (context === 'topsx' && config.TOP_IMGBB_API_KEY) {
+    return config.TOP_IMGBB_API_KEY
+  }
   if (context === 'social' || context === 'bstage') {
     return config.SOCIAL_IMGBB_API_KEY || config.IMGBB_API_KEY
   }
@@ -27,6 +30,12 @@ function getCloudinaryConf(context, member) {
     }
   }
   if (context === 'social' && member === 'T.O.P' && config.TOP_CLOUDINARY_CLOUD_NAME) {
+    return {
+      cloudName: config.TOP_CLOUDINARY_CLOUD_NAME,
+      preset: config.TOP_CLOUDINARY_PRESET,
+    }
+  }
+  if (context === 'topsx' && config.TOP_CLOUDINARY_CLOUD_NAME) {
     return {
       cloudName: config.TOP_CLOUDINARY_CLOUD_NAME,
       preset: config.TOP_CLOUDINARY_PRESET,

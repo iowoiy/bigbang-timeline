@@ -138,6 +138,14 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   const [videoOnly, setVideoOnly] = useState(false)
   const importCancelRef = useRef(false)
 
+  // TOPSX 匯入
+  const [showTopsxModal, setShowTopsxModal] = useState(false)
+  const [topsxJson, setTopsxJson] = useState('')
+  const [topsxPhase, setTopsxPhase] = useState(null) // null | 'processing' | 'done'
+  const [topsxProgress, setTopsxProgress] = useState({ current: 0, total: 0, skipped: 0, success: 0, failed: 0 })
+  const [topsxLog, setTopsxLog] = useState([])
+  const topsxCancelRef = useRef(false)
+
   // 載入資料
   useEffect(() => {
     loadArchives()
@@ -490,6 +498,106 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   function handleCancelImport() {
     importCancelRef.current = true
     addImportLog('正在取消...', 'warn')
+  }
+
+  // ===== TOPSX 匯入功能 =====
+
+  function addTopsxLog(msg, type = 'info') {
+    setTopsxLog(prev => [...prev, { msg, type, ts: Date.now() }])
+  }
+
+  async function handleStartTopsxImport() {
+    let items
+    try {
+      items = JSON.parse(topsxJson.trim())
+      if (!Array.isArray(items)) throw new Error('格式錯誤')
+    } catch {
+      showToast('JSON 格式錯誤，請確認貼上的內容', 'error')
+      return
+    }
+
+    topsxCancelRef.current = false
+    setTopsxLog([])
+    setTopsxPhase('processing')
+    setTopsxProgress({ current: 0, total: items.length, skipped: 0, success: 0, failed: 0 })
+    addTopsxLog(`開始處理 ${items.length} 筆 TOPSX 內容...`, 'info')
+
+    // 重新載入最新資料做去重
+    let latestArchives = archives
+    try {
+      latestArchives = await membershipApi.load()
+      setArchives(latestArchives)
+    } catch (e) {
+      console.warn('重新載入資料失敗，使用現有 state 去重', e)
+    }
+    const existingSourceUrls = new Set(latestArchives.map(a => a.sourceUrl).filter(Boolean))
+
+    for (let i = 0; i < items.length; i++) {
+      if (topsxCancelRef.current) break
+
+      const item = items[i]
+      const sourceUrl = item.src // CDN 原始 URL 當作 sourceUrl 去重
+
+      // 去重
+      if (existingSourceUrls.has(sourceUrl)) {
+        setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, skipped: prev.skipped + 1 }))
+        addTopsxLog(`⏭ 跳過（已存在）: ${item.date || ''}`, 'info')
+        continue
+      }
+
+      try {
+        const uploadOpts = { context: 'topsx' }
+        const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+          uploadToCloudinary(item.src, uploadOpts),
+          uploadToImgBB(item.src, uploadOpts).catch(err => {
+            console.warn('ImgBB 備份失敗:', err.message)
+            return null
+          })
+        ])
+
+        const record = {
+          id: `mb-topsx-${Date.now()}-${i}`,
+          member: 'T.O.P',
+          date: item.date || new Date().toISOString().split('T')[0],
+          time: '',
+          caption: item.caption || '',
+          media: [{
+            url: cloudinaryUrl,
+            type: 'image',
+            ...(imgbbUrl && { backupUrl: imgbbUrl }),
+          }],
+          sourceUrl: sourceUrl,
+          notes: 'TOPSX Contents',
+          paid: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+
+        const result = await membershipApi.create(record)
+        if (result.skipped) {
+          setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, skipped: prev.skipped + 1 }))
+          addTopsxLog(`⏭ 跳過（D1 已存在）: ${item.date || ''}`, 'info')
+        } else {
+          setArchives(prev => [record, ...prev])
+          existingSourceUrls.add(sourceUrl)
+          setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, success: prev.success + 1 }))
+          addTopsxLog(`✅ ${item.date || ''} 備份完成`, 'success')
+        }
+      } catch (err) {
+        console.error(`TOPSX 匯入失敗:`, err)
+        setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, failed: prev.failed + 1 }))
+        addTopsxLog(`❌ 失敗: ${err.message}`, 'error')
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    if (topsxCancelRef.current) {
+      addTopsxLog('已取消匯入', 'warn')
+    } else {
+      addTopsxLog('🎉 匯入完成！', 'success')
+    }
+    setTopsxPhase('done')
   }
 
   function showToast(msg, type = 'success') {
@@ -893,11 +1001,14 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
           <h1>🔒 會員備份</h1>
         </div>
         <div className="header-actions">
-          {isAdmin && (
+          {isAdmin && (<>
+            <button className="membership-import-btn" onClick={() => setShowTopsxModal(true)} title="從 TOPSX 匯入" style={{ fontSize: 12, fontWeight: 700, padding: '6px 10px' }}>
+              TX
+            </button>
             <button className="membership-import-btn" onClick={() => setShowImportModal(true)} title="從 b.stage 匯入">
               <Download size={18} />
             </button>
-          )}
+          </>)}
           <button className="add-btn" onClick={openAddModal} title="新增備份">
             <Plus size={20} />
           </button>
@@ -1446,6 +1557,124 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
               <button className={`confirm-modal-confirm confirm-modal-confirm-${confirmModal.type}`} onClick={confirmModal.onConfirm}>
                 {confirmModal.confirmText}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOPSX 匯入 Modal */}
+      {showTopsxModal && (
+        <div className="modal-overlay" onClick={() => { if (!topsxPhase || topsxPhase === 'done') { setShowTopsxModal(false); setTopsxPhase(null); setTopsxJson(''); setTopsxLog([]) } }}>
+          <div className="archive-modal import-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2><Download size={18} /> 從 TOPSX 匯入</h2>
+              <button className="close-btn" onClick={() => {
+                if (topsxPhase && topsxPhase !== 'done') {
+                  topsxCancelRef.current = true
+                  addTopsxLog('正在取消...', 'warn')
+                } else {
+                  setShowTopsxModal(false)
+                  setTopsxPhase(null)
+                  setTopsxJson('')
+                  setTopsxLog([])
+                }
+              }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {!topsxPhase && (
+                <>
+                  <div className="form-group">
+                    <label>步驟 1：在 TOPSX 網站 Console 執行腳本</label>
+                    <div className="import-hint" style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, fontSize: 12, lineHeight: 1.6, marginTop: 8 }}>
+                      <p style={{ marginBottom: 8 }}>登入 <a href="https://en.top-official.co/29" target="_blank" rel="noopener" style={{ color: '#f0c040' }}>TOPSX Contents</a> → F12 開發者工具 → Console → 貼上以下腳本：</p>
+                      <pre style={{ background: '#111', padding: 10, borderRadius: 6, overflow: 'auto', maxHeight: 120, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{`(()=>{const imgs=document.querySelectorAll('[data-src]');const seen=new Set();const items=[];imgs.forEach(el=>{const src=el.getAttribute('data-src');if(seen.has(src))return;seen.add(src);const m=src.match(/\\/thumbnail\\/(\\d{8})\\//);const d=m?m[1].replace(/(\\d{4})(\\d{2})(\\d{2})/,'$1-$2-$3'):'';items.push({src,date:d})});console.log(JSON.stringify(items));copy(JSON.stringify(items));alert('已複製 '+items.length+' 筆到剪貼簿！')})();`}</pre>
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ marginTop: 12 }}>
+                    <label>步驟 2：貼上腳本輸出的 JSON</label>
+                    <textarea
+                      className="import-token-input"
+                      placeholder='貼上 JSON 陣列，格式如：[{"src":"https://cdn.imweb.me/...","date":"2026-03-16"}, ...]'
+                      value={topsxJson}
+                      onChange={e => setTopsxJson(e.target.value)}
+                      rows={5}
+                    />
+                    {topsxJson.trim() && (() => {
+                      try {
+                        const parsed = JSON.parse(topsxJson.trim())
+                        return <p className="import-hint" style={{ color: '#4caf50' }}>✅ 解析到 {parsed.length} 筆圖片</p>
+                      } catch {
+                        return <p className="import-hint" style={{ color: '#f44336' }}>❌ JSON 格式錯誤</p>
+                      }
+                    })()}
+                  </div>
+                </>
+              )}
+
+              {/* 進度 */}
+              {(topsxPhase === 'processing' || topsxPhase === 'done') && (
+                <div className="import-progress-section">
+                  <h3>{topsxPhase === 'done' ? '✅ 匯入完成' : '📦 處理中...'}</h3>
+                  <div className="import-stats">
+                    <span className="import-stat success">✅ {topsxProgress.success}</span>
+                    <span className="import-stat skipped">⏭ {topsxProgress.skipped}</span>
+                    <span className="import-stat failed">❌ {topsxProgress.failed}</span>
+                  </div>
+                  {topsxProgress.total > 0 && (
+                    <>
+                      <div className="import-progress-bar">
+                        <div
+                          className="import-progress-bar-fill"
+                          style={{ width: `${(topsxProgress.current / topsxProgress.total) * 100}%` }}
+                        />
+                      </div>
+                      <p className="import-progress-text">
+                        {topsxProgress.current} / {topsxProgress.total}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Log */}
+              {topsxLog.length > 0 && (
+                <div className="import-log">
+                  {topsxLog.map((log, i) => (
+                    <div key={i} className={`import-log-line import-log-${log.type}`}>{log.msg}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              {!topsxPhase && (
+                <>
+                  <button className="cancel-btn" onClick={() => { setShowTopsxModal(false); setTopsxJson('') }}>
+                    取消
+                  </button>
+                  <button className="save-btn" onClick={handleStartTopsxImport} disabled={!topsxJson.trim()}>
+                    <Download size={16} /> 開始匯入
+                  </button>
+                </>
+              )}
+              {topsxPhase === 'processing' && (
+                <button className="cancel-btn" onClick={() => { topsxCancelRef.current = true; addTopsxLog('正在取消...', 'warn') }}>
+                  取消匯入
+                </button>
+              )}
+              {topsxPhase === 'done' && (
+                <button className="save-btn" onClick={() => {
+                  setShowTopsxModal(false)
+                  setTopsxPhase(null)
+                  setTopsxJson('')
+                  setTopsxLog([])
+                }}>
+                  關閉
+                </button>
+              )}
             </div>
           </div>
         </div>
