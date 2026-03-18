@@ -507,20 +507,29 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
   }
 
   async function handleStartTopsxImport() {
-    let items
+    let rawItems
     try {
-      items = JSON.parse(topsxJson.trim())
-      if (!Array.isArray(items)) throw new Error('格式錯誤')
+      rawItems = JSON.parse(topsxJson.trim())
+      if (!Array.isArray(rawItems)) throw new Error('格式錯誤')
     } catch {
       showToast('JSON 格式錯誤，請確認貼上的內容', 'error')
       return
     }
 
+    // 按日期分組：同一天的圖片/影片合併為一筆
+    const groupedByDate = {}
+    for (const item of rawItems) {
+      const date = item.date || 'unknown'
+      if (!groupedByDate[date]) groupedByDate[date] = []
+      groupedByDate[date].push(item)
+    }
+    const groups = Object.entries(groupedByDate).map(([date, items]) => ({ date, items }))
+
     topsxCancelRef.current = false
     setTopsxLog([])
     setTopsxPhase('processing')
-    setTopsxProgress({ current: 0, total: items.length, skipped: 0, success: 0, failed: 0 })
-    addTopsxLog(`開始處理 ${items.length} 筆 TOPSX 內容...`, 'info')
+    setTopsxProgress({ current: 0, total: groups.length, skipped: 0, success: 0, failed: 0 })
+    addTopsxLog(`共 ${rawItems.length} 筆媒體，按日期分為 ${groups.length} 組`, 'info')
 
     // 重新載入最新資料做去重
     let latestArchives = archives
@@ -530,44 +539,72 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
     } catch (e) {
       console.warn('重新載入資料失敗，使用現有 state 去重', e)
     }
-    const existingSourceUrls = new Set(latestArchives.map(a => a.sourceUrl).filter(Boolean))
+    // 用 sourceUrl 包含 topsx- 日期的方式去重
+    const existingTopsxDates = new Set(
+      latestArchives
+        .filter(a => a.id?.startsWith('mb-topsx-'))
+        .map(a => a.date)
+    )
 
-    for (let i = 0; i < items.length; i++) {
+    for (let g = 0; g < groups.length; g++) {
       if (topsxCancelRef.current) break
 
-      const item = items[i]
-      const sourceUrl = item.src // CDN 原始 URL 當作 sourceUrl 去重
+      const group = groups[g]
 
-      // 去重
-      if (existingSourceUrls.has(sourceUrl)) {
+      // 去重：同日期已存在
+      if (existingTopsxDates.has(group.date)) {
         setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, skipped: prev.skipped + 1 }))
-        addTopsxLog(`⏭ 跳過（已存在）: ${item.date || ''}`, 'info')
+        addTopsxLog(`⏭ 跳過（${group.date} 已存在，${group.items.length} 筆媒體）`, 'info')
         continue
       }
 
       try {
-        const uploadOpts = { context: 'topsx' }
-        const [cloudinaryUrl, imgbbUrl] = await Promise.all([
-          uploadToCloudinary(item.src, uploadOpts),
-          uploadToImgBB(item.src, uploadOpts).catch(err => {
-            console.warn('ImgBB 備份失敗:', err.message)
-            return null
-          })
-        ])
+        addTopsxLog(`📦 處理 ${group.date}（${group.items.length} 筆媒體）...`, 'info')
+        const uploadedMedia = []
+
+        for (const item of group.items) {
+          if (topsxCancelRef.current) break
+          const isVideo = item.type === 'video'
+
+          if (isVideo) {
+            // 影片直接保留原始 URL
+            uploadedMedia.push({ url: item.src, type: 'video' })
+            addTopsxLog(`  🎬 影片: ${item.src.slice(-30)}`, 'info')
+          } else {
+            try {
+              const uploadOpts = { context: 'topsx' }
+              const [cloudinaryUrl, imgbbUrl] = await Promise.all([
+                uploadToCloudinary(item.src, uploadOpts),
+                uploadToImgBB(item.src, uploadOpts).catch(err => {
+                  console.warn('ImgBB 備份失敗:', err.message)
+                  return null
+                })
+              ])
+              uploadedMedia.push({
+                url: cloudinaryUrl,
+                type: 'image',
+                ...(imgbbUrl && { backupUrl: imgbbUrl }),
+              })
+            } catch (uploadErr) {
+              console.warn('圖片上傳失敗，使用原始 URL:', uploadErr)
+              uploadedMedia.push({ url: item.src, type: 'image' })
+              addTopsxLog(`  ⚠ 圖片備份失敗，使用原始連結`, 'warn')
+            }
+          }
+          await new Promise(resolve => setTimeout(resolve, 80))
+        }
+
+        const videoNotes = group.items.filter(i => i.type === 'video').map(i => `[影片] ${i.src}`).join('\n')
 
         const record = {
-          id: `mb-topsx-${Date.now()}-${i}`,
+          id: `mb-topsx-${group.date.replace(/-/g, '')}`,
           member: 'T.O.P',
-          date: item.date || new Date().toISOString().split('T')[0],
+          date: group.date !== 'unknown' ? group.date : new Date().toISOString().split('T')[0],
           time: '',
-          caption: item.caption || '',
-          media: [{
-            url: cloudinaryUrl,
-            type: 'image',
-            ...(imgbbUrl && { backupUrl: imgbbUrl }),
-          }],
-          sourceUrl: sourceUrl,
-          notes: 'TOPSX Contents',
+          caption: '',
+          media: uploadedMedia,
+          sourceUrl: `https://en.top-official.co/29`,
+          notes: videoNotes || 'TOPSX Contents',
           paid: true,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -576,20 +613,18 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
         const result = await membershipApi.create(record)
         if (result.skipped) {
           setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, skipped: prev.skipped + 1 }))
-          addTopsxLog(`⏭ 跳過（D1 已存在）: ${item.date || ''}`, 'info')
+          addTopsxLog(`⏭ 跳過（D1 已存在）: ${group.date}`, 'info')
         } else {
           setArchives(prev => [record, ...prev])
-          existingSourceUrls.add(sourceUrl)
+          existingTopsxDates.add(group.date)
           setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, success: prev.success + 1 }))
-          addTopsxLog(`✅ ${item.date || ''} 備份完成`, 'success')
+          addTopsxLog(`✅ ${group.date} 備份完成（${uploadedMedia.length} 筆媒體）`, 'success')
         }
       } catch (err) {
         console.error(`TOPSX 匯入失敗:`, err)
         setTopsxProgress(prev => ({ ...prev, current: prev.current + 1, failed: prev.failed + 1 }))
-        addTopsxLog(`❌ 失敗: ${err.message}`, 'error')
+        addTopsxLog(`❌ ${group.date} 失敗: ${err.message}`, 'error')
       }
-
-      await new Promise(resolve => setTimeout(resolve, 100))
     }
 
     if (topsxCancelRef.current) {
@@ -1590,7 +1625,7 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                     <label>步驟 1：在 TOPSX 網站 Console 執行腳本</label>
                     <div className="import-hint" style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, fontSize: 12, lineHeight: 1.6, marginTop: 8 }}>
                       <p style={{ marginBottom: 8 }}>登入 <a href="https://en.top-official.co/29" target="_blank" rel="noopener" style={{ color: '#f0c040' }}>TOPSX Contents</a> → F12 開發者工具 → Console → 貼上以下腳本：</p>
-                      <pre style={{ background: '#111', padding: 10, borderRadius: 6, overflow: 'auto', maxHeight: 120, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{`(()=>{const imgs=document.querySelectorAll('[data-src]');const seen=new Set();const items=[];imgs.forEach(el=>{const src=el.getAttribute('data-src');if(seen.has(src))return;seen.add(src);const m=src.match(/\\/thumbnail\\/(\\d{8})\\//);const d=m?m[1].replace(/(\\d{4})(\\d{2})(\\d{2})/,'$1-$2-$3'):'';items.push({src,date:d})});console.log(JSON.stringify(items));copy(JSON.stringify(items));alert('已複製 '+items.length+' 筆到剪貼簿！')})();`}</pre>
+                      <pre style={{ background: '#111', padding: 10, borderRadius: 6, overflow: 'auto', maxHeight: 120, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{`(()=>{const seen=new Set();const items=[];document.querySelectorAll('[data-src]').forEach(el=>{const src=el.getAttribute('data-src');if(seen.has(src))return;seen.add(src);const m=src.match(/\\/thumbnail\\/(\\d{8})\\//);const d=m?m[1].replace(/(\\d{4})(\\d{2})(\\d{2})/,'$1-$2-$3'):'';items.push({src,date:d,type:'image'})});document.querySelectorAll('video source, video[src]').forEach(v=>{const src=v.src||v.getAttribute('src');if(!src||seen.has(src))return;seen.add(src);const today=new Date().toISOString().slice(0,10);items.push({src,date:today,type:'video'})});console.log(JSON.stringify(items));copy(JSON.stringify(items));alert('已複製 '+items.length+' 筆（圖片+影片）到剪貼簿！')})();`}</pre>
                     </div>
                   </div>
                   <div className="form-group" style={{ marginTop: 12 }}>
@@ -1605,7 +1640,10 @@ function MembershipArchive({ isAdmin, onBack, currentPage, setCurrentPage }) {
                     {topsxJson.trim() && (() => {
                       try {
                         const parsed = JSON.parse(topsxJson.trim())
-                        return <p className="import-hint" style={{ color: '#4caf50' }}>✅ 解析到 {parsed.length} 筆圖片</p>
+                        const imgs = parsed.filter(i => i.type !== 'video').length
+                        const vids = parsed.filter(i => i.type === 'video').length
+                        const dates = [...new Set(parsed.map(i => i.date))].length
+                        return <p className="import-hint" style={{ color: '#4caf50' }}>✅ 解析到 {imgs} 張圖片{vids > 0 ? `、${vids} 支影片` : ''}，共 {dates} 天</p>
                       } catch {
                         return <p className="import-hint" style={{ color: '#f44336' }}>❌ JSON 格式錯誤</p>
                       }
