@@ -12,6 +12,7 @@ import { uploadToCloudinary } from './utils/upload'
 import { eventsApi, logVisitor } from './utils/api'
 const SocialArchive = lazy(() => import('./components/SocialArchive'))
 const MembershipArchive = lazy(() => import('./components/MembershipArchive'))
+const OnThisDay = lazy(() => import('./components/OnThisDay'))
 
 // 載入事件（fallback 到預設資料）
 async function loadEvents() {
@@ -32,7 +33,7 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [me, setMe] = useState(null) // 作者身份
-  const isAdmin = localStorage.getItem('isAdmin') === 'true'
+  const isAdmin = localStorage.getItem('isAdmin') === 'true' || new URLSearchParams(window.location.search).has('admin')
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState([]) // 成員篩選（多選）
   const [modal, setModal] = useState(null)
@@ -302,6 +303,11 @@ export default function App() {
   // ========== 會員備份頁面 ==========
   if (currentPage === 'membership') {
     return <Suspense fallback={<div className="lazy-loading">載入中...</div>}><MembershipArchive isAdmin={isAdmin} onBack={() => setCurrentPage('timeline')} currentPage={currentPage} setCurrentPage={setCurrentPage} /></Suspense>
+  }
+
+  // ========== 查看這一天頁面 ==========
+  if (currentPage === 'onthisday') {
+    return <Suspense fallback={<div className="lazy-loading">載入中...</div>}><OnThisDay isAdmin={isAdmin} currentPage={currentPage} setCurrentPage={setCurrentPage} /></Suspense>
   }
 
   // ========== 主介面 ==========
