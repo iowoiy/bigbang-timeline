@@ -516,6 +516,7 @@
 @media (max-width: 600px) {
   .otd-hero {
     padding: 52px 16px 20px;
+    padding-top: calc(52px + env(safe-area-inset-top));
   }
 
   .otd-date-main {
@@ -536,7 +537,7 @@
   }
 
   .otd-tabs-sticky {
-    top: 41px;
+    top: calc(41px + env(safe-area-inset-top));
   }
 
   .otd-tabs {

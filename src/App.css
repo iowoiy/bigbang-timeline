@@ -192,6 +192,7 @@ a {
     left: 0;
     right: 0;
     padding: 8px 12px;
+    padding-top: calc(8px + env(safe-area-inset-top));
     background: var(--bg-header);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
@@ -476,7 +477,7 @@ a {
 
 @media (max-width: 600px) {
   .filters {
-    top: 44px; /* header 高度 */
+    top: calc(44px + env(safe-area-inset-top)); /* header 高度 + safe area */
   }
 }
 
@@ -1311,6 +1312,7 @@ input[type="date"].form-input::after {
   /* Header 調整 */
   .hero {
     padding: 45px 16px 20px;
+    padding-top: calc(45px + env(safe-area-inset-top));
   }
 
   /* 事件卡片 - 更好的觸控體驗 */
@@ -1482,7 +1484,7 @@ input[type="date"].form-input::after {
 
   /* Year header */
   .year-header {
-    top: 52px;
+    top: calc(52px + env(safe-area-inset-top));
     padding-bottom: 10px;
   }
 
